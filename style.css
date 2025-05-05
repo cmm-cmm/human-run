@@ -1,0 +1,428 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    touch-action: manipulation; /* Ngăn thao tác zoom khi chạm */
+}
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f0f0;
+    overflow: hidden; /* Ngăn scroll không cần thiết */
+}
+
+.game-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.score-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+canvas {
+    background-color: white;
+    border: 2px solid #000;
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+#game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 20;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Thông báo xoay màn hình */
+#orientation-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #1a1a1a;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+#orientation-message h2 {
+    margin: 15px 0;
+    font-size: 28px;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+#orientation-message p {
+    font-size: 18px;
+    margin-bottom: 25px;
+    max-width: 300px;
+}
+
+/* Thêm hiệu ứng minh họa thiết bị xoay */
+.device-animation {
+    margin-top: 20px;
+    position: relative;
+}
+
+.phone-outline {
+    width: 100px;
+    height: 180px;
+    border: 4px solid #fff;
+    border-radius: 20px;
+    position: relative;
+    animation: rotatePhone 3s infinite ease-in-out;
+    transform-origin: center center;
+    margin: 0 auto;
+}
+
+.phone-screen {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    background-color: #4287f5;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.phone-screen::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 5px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 3px;
+}
+
+@keyframes rotatePhone {
+    0% { transform: rotate(0deg); }
+    40% { transform: rotate(0deg); }
+    60% { transform: rotate(-90deg); }
+    100% { transform: rotate(-90deg); }
+}
+
+/* Điều khiển cảm ứng */
+.touch-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    display: none; /* Mặc định ẩn các nút cảm ứng */
+}
+
+.touch-button {
+    position: absolute;
+    height: 100%;
+    width: 50%; /* Each button takes half of the screen */
+    pointer-events: auto;
+    user-select: none;
+}
+
+.touch-left {
+    left: 0;
+}
+
+.touch-right {
+    right: 0;
+}
+
+.touch-button-overlay {
+    position: absolute;
+    width: 55px;
+    height: 75px;
+    border-radius: 28px;
+    background-color: rgba(76, 175, 255, 0.3); /* Điều chỉnh độ trong suốt xuống 0.3 */
+    border: 2px solid rgba(255, 255, 255, 0.8); /* Giảm độ dày của viền từ 4px xuống 2px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Thêm shadow để icon dễ nhìn hơn */
+    pointer-events: none;
+    opacity: 0.8; /* Giảm opacity xuống 0.8 */
+    bottom: 20px;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3); /* Thêm hiệu ứng viền sáng nhẹ */
+    transition: all 0.2s ease; /* Thêm hiệu ứng chuyển đổi khi chạm */
+}
+
+/* Màu khác nhau cho từng nút */
+.touch-left .touch-button-overlay {
+    left: 20px;
+    background-color: rgba(76, 175, 255, 0.3); /* Giảm độ trong suốt */
+}
+
+.touch-right .touch-button-overlay {
+    right: 20px;
+    background-color: rgba(255, 165, 0, 0.3); /* Giảm độ trong suốt */
+}
+
+/* Thêm hiệu ứng khi chạm vào nút */
+.touch-left:active .touch-button-overlay, 
+.touch-right:active .touch-button-overlay {
+    transform: scale(0.95);
+    opacity: 1; /* Hiển thị rõ ràng khi chạm */
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.7); /* Tăng độ sáng khi chạm */
+}
+
+.jump-icon::after {
+    content: ''; /* Thay thế ký tự mũi tên bằng phần tử tạo hình */
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 20px solid white; /* Tam giác chỉ lên */
+    display: block;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)); /* Thêm hiệu ứng phát sáng */
+}
+
+.duck-icon::after {
+    content: ''; /* Thay thế ký tự mũi tên bằng phần tử tạo hình */
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 20px solid white; /* Tam giác chỉ xuống */
+    display: block;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)); /* Thêm hiệu ứng phát sáng */
+}
+
+/* Hiển thị combo */
+.combo-display {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+    background-color: rgba(255, 220, 0, 0.8);
+    color: #000;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 18px;
+    animation: pulse 1s infinite alternate;
+    box-shadow: 0 0 10px rgba(255, 220, 0, 0.5);
+    z-index: 10;
+}
+
+/* Hiển thị powerup */
+.powerup-display {
+    position: absolute;
+    top: 90px;
+    right: 20px;
+    background-color: rgba(100, 100, 255, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 16px;
+    animation: glow 1.5s infinite alternate;
+    box-shadow: 0 0 15px rgba(100, 100, 255, 0.7);
+    z-index: 10;
+}
+
+
+/* Text thông tin bổ sung */
+.info-text {
+    color: #666;
+    font-style: italic;
+    font-size: 12px;
+    margin: 0 15px;
+}
+
+/* Animation cho hiệu ứng */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.1); }
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px rgba(100, 100, 255, 0.5); }
+    100% { box-shadow: 0 0 20px rgba(100, 100, 255, 0.9); }
+}
+
+.controls-guide {
+    margin-top: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    margin: 0 10px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.key-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background-color: #222;
+    border: 1px solid #000;
+    border-radius: 3px;
+    margin: 0 2px;
+    padding: 0 2px;
+    font-family: monospace;
+    font-size: 12px;
+    color: white;
+}
+
+.control-item span {
+    margin-left: 4px;
+    font-size: 12px;
+    color: #555;
+    font-weight: bold;
+}
+
+/* Media queries cho thiết bị di động */
+@media (max-width: 768px) {
+    .game-container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+    }
+    
+    .score-container {
+        font-size: 16px;
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+    
+    canvas {
+        max-height: calc(100vh - 70px); /* Giới hạn chiều cao để tránh tràn */
+    }
+    
+    .controls-guide {
+        display: none; /* Ẩn trên mobile vì đã có controls cảm ứng */
+    }
+
+    .touch-controls {
+        display: block; /* Chỉ hiển thị nút cảm ứng trên thiết bị di động */
+    }
+    
+    /* Điều chỉnh vị trí nút cảm ứng để phù hợp hơn với các thiết bị */
+    .touch-button-overlay {
+        width: 50px;
+        height: 65px;
+        border-radius: 25px;
+        font-size: 28px;
+        bottom: 10%; /* Dùng phần trăm thay vì px để thích ứng với nhiều kích thước màn hình */
+    }
+    
+    /* Điều chỉnh vị trí nút để không bị chặn bởi các thanh điều hướng */
+    .touch-left .touch-button-overlay {
+        left: 10%;
+    }
+    
+    .touch-right .touch-button-overlay {
+        right: 10%;
+    }
+
+    #game-over {
+        padding: 15px;
+        width: 80%;
+        max-width: 300px;
+    }
+    
+    #game-over p {
+        font-size: 16px;
+    }
+    
+    #game-over h2 {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+
+    .desktop-only {
+        display: none;
+    }
+    
+    /* Thêm chỉnh giành riêng cho thiết bị nhỏ hơn */
+    @media (max-height: 450px) {
+        .touch-button-overlay {
+            width: 40px;
+            height: 55px;
+            font-size: 24px;
+            bottom: 15%;
+        }
+        
+        .score-container {
+            font-size: 14px;
+        }
+    }
+}
+
+/* Media queries cho máy tính */
+@media (min-width: 769px) {
+    .mobile-only {
+        display: none;
+    }
+}
+
+/* Ẩn thông báo xoay màn hình trong chế độ ngang */
+@media (orientation: landscape) {
+    #orientation-message {
+        display: none;
+    }
+}
+
+/* Hiển thị thông báo xoay màn hình trong chế độ dọc */
+@media (orientation: portrait) {
+    .game-container {
+        display: none;
+    }
+    
+    #orientation-message {
+        display: flex;
+    }
+}
+
+/* Tối ưu cho thiết bị có notch hoặc thanh điều hướng */
+@supports (padding: max(0px)) {
+    .game-container {
+        padding-left: max(10px, env(safe-area-inset-left));
+        padding-right: max(10px, env(safe-area-inset-right));
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+}

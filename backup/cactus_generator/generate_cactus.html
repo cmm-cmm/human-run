@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo hình ảnh xương rồng</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .preview {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .preview canvas {
+            border: 1px solid #ddd;
+            margin: 10px;
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            color: #2D7A32;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tạo hình ảnh xương rồng mới</h1>
+        <p>Trang này giúp bạn tạo hình ảnh mới cho các chướng ngại vật xương rồng trong trò chơi. Nhấn nút bên dưới để tạo và tải xuống hình ảnh xương rồng với 3 kích thước: nhỏ, trung bình và lớn.</p>
+        
+        <div style="text-align: center;">
+            <button id="generateBtn">Tạo hình ảnh xương rồng</button>
+        </div>
+        
+        <div class="preview" id="previewContainer">
+            <!-- Khu vực hiển thị preview của các hình ảnh -->
+        </div>
+    </div>
+    
+    <script src="generate_cactus_sprites.js"></script>
+    <script>
+        // Thêm chức năng hiển thị preview trước khi tải về
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.innerHTML = ''; // Xóa preview cũ
+            
+            // Tạo các canvas và hiển thị chúng
+            const smallCanvas = createCanvas(25, 50);
+            const mediumCanvas = createCanvas(35, 60);
+            const largeCanvas = createCanvas(45, 70);
+            
+            // Vẽ các loại xương rồng
+            const smallCtx = smallCanvas.getContext('2d');
+            const mediumCtx = mediumCanvas.getContext('2d');
+            const largeCtx = largeCanvas.getContext('2d');
+            
+            // Gọi các hàm vẽ với context từ canvas preview
+            drawOnCanvas(smallCtx, 'small');
+            drawOnCanvas(mediumCtx, 'medium');
+            drawOnCanvas(largeCtx, 'large');
+            
+            // Thêm canvas vào container
+            previewContainer.appendChild(createPreviewElement(smallCanvas, 'Xương rồng nhỏ'));
+            previewContainer.appendChild(createPreviewElement(mediumCanvas, 'Xương rồng trung bình'));
+            previewContainer.appendChild(createPreviewElement(largeCanvas, 'Xương rồng lớn'));
+            
+            // Tạo và tải xuống các file hình ảnh
+            generateAllCactusSprites();
+        });
+        
+        // Hàm tạo phần tử hiển thị preview
+        function createPreviewElement(canvas, label) {
+            const div = document.createElement('div');
+            div.style.textAlign = 'center';
+            
+            const p = document.createElement('p');
+            p.textContent = label;
+            div.appendChild(p);
+            
+            // Phóng to canvas để dễ nhìn hơn
+            const displayCanvas = document.createElement('canvas');
+            displayCanvas.width = canvas.width * 3;
+            displayCanvas.height = canvas.height * 3;
+            const displayCtx = displayCanvas.getContext('2d');
+            displayCtx.imageSmoothingEnabled = false; // Tắt làm mịn để thấy rõ pixel
+            displayCtx.drawImage(canvas, 0, 0, displayCanvas.width, displayCanvas.height);
+            
+            div.appendChild(displayCanvas);
+            return div;
+        }
+        
+        // Hàm vẽ trên canvas dựa vào loại
+        function drawOnCanvas(ctx, type) {
+            if (type === 'small') {
+                // Copy code từ hàm drawSmallCactus nhưng bỏ phần saveCanvas
+                drawCactusWithoutSaving(ctx, 25, 50, type);
+            } else if (type === 'medium') {
+                drawCactusWithoutSaving(ctx, 35, 60, type);
+            } else if (type === 'large') {
+                drawCactusWithoutSaving(ctx, 45, 70, type);
+            }
+        }
+        
+        // Hàm vẽ xương rồng mà không lưu
+        function drawCactusWithoutSaving(ctx, width, height, type) {
+            // Vẽ bóng đổ xuống đất
+            ctx.fillStyle = SAND_COLOR;
+            ctx.beginPath();
+            
+            if (type === 'small') {
+                ctx.ellipse(12, 48, 10, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Thân chính
+                ctx.fillStyle = GREEN;
+                ctx.fillRect(10, 0, 8, 48);
+                
+                // Nhánh bên trái
+                ctx.fillRect(0, 20, 10, 6);
+                
+                // Nhánh bên phải
+                ctx.fillRect(18, 15, 7, 5);
+                
+                // Bóng đổ trên thân
+                ctx.fillStyle = DARK_GREEN;
+                ctx.fillRect(14, 0, 4, 48);
+                
+                // Highlight trên thân
+                ctx.fillStyle = LIGHT_GREEN;
+                ctx.fillRect(10, 0, 2, 48);
+                
+                // Thêm gai
+                ctx.fillStyle = SPINE_COLOR;
+                for (let i = 0; i < 10; i++) {
+                    // Gai bên trái
+                    ctx.fillRect(8, i * 5 + 2, 2, 1);
+                    // Gai bên phải
+                    ctx.fillRect(18, i * 5, 2, 1);
+                }
+                
+                // Gai trên nhánh
+                ctx.fillRect(0, 18, 2, 1);
+                ctx.fillRect(0, 22, 2, 1);
+                ctx.fillRect(22, 13, 2, 1);
+                ctx.fillRect(22, 17, 2, 1);
+            } else if (type === 'medium') {
+                ctx.ellipse(17, 58, 14, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Thân chính
+                ctx.fillStyle = GREEN;
+                ctx.fillRect(15, 0, 10, 58);
+                
+                // Nhánh bên trái
+                ctx.fillRect(0, 15, 15, 7);
+                ctx.fillRect(5, 35, 10, 6);
+                
+                // Nhánh bên phải
+                ctx.fillRect(25, 25, 10, 8);
+                
+                // Bóng đổ trên thân
+                ctx.fillStyle = DARK_GREEN;
+                ctx.fillRect(20, 0, 5, 58);
+                
+                // Highlight trên thân
+                ctx.fillStyle = LIGHT_GREEN;
+                ctx.fillRect(15, 0, 3, 58);
+                
+                // Thêm gai
+                ctx.fillStyle = SPINE_COLOR;
+                for (let i = 0; i < 12; i++) {
+                    // Gai bên trái
+                    ctx.fillRect(12, i * 5 + 2, 3, 1);
+                    // Gai bên phải
+                    ctx.fillRect(25, i * 5, 3, 1);
+                }
+                
+                // Gai trên nhánh
+                ctx.fillRect(0, 13, 3, 1);
+                ctx.fillRect(0, 17, 3, 1);
+                ctx.fillRect(5, 33, 3, 1);
+                ctx.fillRect(5, 37, 3, 1);
+                ctx.fillRect(32, 24, 3, 1);
+                ctx.fillRect(32, 28, 3, 1);
+            } else if (type === 'large') {
+                ctx.ellipse(22, 68, 18, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Thân chính
+                ctx.fillStyle = GREEN;
+                ctx.fillRect(20, 0, 12, 68);
+                
+                // Nhánh bên trái
+                ctx.fillRect(0, 20, 20, 8);
+                ctx.fillRect(5, 45, 15, 7);
+                
+                // Nhánh bên phải
+                ctx.fillRect(32, 15, 13, 8);
+                ctx.fillRect(32, 35, 13, 7);
+                
+                // Bóng đổ trên thân
+                ctx.fillStyle = DARK_GREEN;
+                ctx.fillRect(26, 0, 6, 68);
+                
+                // Highlight trên thân
+                ctx.fillStyle = LIGHT_GREEN;
+                ctx.fillRect(20, 0, 3, 68);
+                
+                // Thêm gai
+                ctx.fillStyle = SPINE_COLOR;
+                for (let i = 0; i < 14; i++) {
+                    // Gai bên trái
+                    ctx.fillRect(17, i * 5 + 2, 3, 1);
+                    // Gai bên phải
+                    ctx.fillRect(32, i * 5, 3, 1);
+                }
+                
+                // Gai trên nhánh
+                ctx.fillRect(0, 18, 3, 1);
+                ctx.fillRect(0, 22, 3, 1);
+                ctx.fillRect(5, 43, 3, 1);
+                ctx.fillRect(5, 47, 3, 1);
+                ctx.fillRect(42, 14, 3, 1);
+                ctx.fillRect(42, 17, 3, 1);
+                ctx.fillRect(42, 34, 3, 1);
+                ctx.fillRect(42, 37, 3, 1);
+            }
+        }
+    </script>
+</body>
+</html>

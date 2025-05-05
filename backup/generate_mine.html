@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Mine Sprite</title>
+</head>
+<body>
+    <script>
+        // Tạo quả mìn
+        const canvas = document.createElement('canvas');
+        const MINE_WIDTH = 30;
+        const MINE_HEIGHT = 20;
+        canvas.width = MINE_WIDTH;
+        canvas.height = MINE_HEIGHT;
+        const ctx = canvas.getContext('2d');
+        
+        // Vẽ phần thân quả mìn - màu gần giống với cát sa mạc để khó phát hiện
+        ctx.fillStyle = '#C8AA74';
+        ctx.beginPath();
+        ctx.ellipse(MINE_WIDTH/2, MINE_HEIGHT - 6, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Thêm một chút đường viền để tạo chiều sâu
+        ctx.strokeStyle = '#A88E60';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(MINE_WIDTH/2, MINE_HEIGHT - 6, 12, 8, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Vẽ ngòi nổ
+        ctx.fillStyle = '#555';
+        ctx.beginPath();
+        ctx.arc(MINE_WIDTH/2, MINE_HEIGHT - 14, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Thêm dây ngòi
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(MINE_WIDTH/2, MINE_HEIGHT - 14);
+        ctx.lineTo(MINE_WIDTH/2, MINE_HEIGHT - 18);
+        ctx.stroke();
+        
+        // Thêm một ít chi tiết trên quả mìn để tạo điểm nhấn
+        ctx.fillStyle = '#AA8E60';
+        ctx.beginPath();
+        ctx.arc(MINE_WIDTH/2 - 5, MINE_HEIGHT - 5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(MINE_WIDTH/2 + 5, MINE_HEIGHT - 5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Hiển thị sprite để lưu
+        document.body.appendChild(canvas);
+        
+        // Tạo link để tải xuống
+        const link = document.createElement('a');
+        link.innerHTML = 'Tải xuống hình ảnh quả mìn';
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'mine.png';
+        document.body.appendChild(link);
+        
+        // Tạo các sprites cho hiệu ứng nổ
+        for (let i = 0; i < 3; i++) {
+            const explosionCanvas = document.createElement('canvas');
+            explosionCanvas.width = 80;
+            explosionCanvas.height = 80;
+            const expCtx = explosionCanvas.getContext('2d');
+            
+            // Cột khói và lửa
+            const gradient = expCtx.createRadialGradient(40, 40, 5, 40, 40, 40);
+            gradient.addColorStop(0, 'rgba(255, 200, 50, 1)');     // Lõi vàng
+            gradient.addColorStop(0.3, 'rgba(255, 100, 50, 0.8)'); // Cam
+            gradient.addColorStop(0.6, 'rgba(150, 50, 50, 0.6)');  // Đỏ sẫm
+            gradient.addColorStop(1, 'rgba(80, 80, 80, 0.2)');     // Rìa khói
+            
+            expCtx.fillStyle = gradient;
+            expCtx.beginPath();
+            expCtx.arc(40, 40, 35 + i * 5, 0, Math.PI * 2);
+            expCtx.fill();
+            
+            // Thêm các mảnh vỡ bay ra
+            expCtx.fillStyle = '#AA8E60';
+            for (let j = 0; j < 8 + i * 4; j++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 15 + Math.random() * (20 + i * 5);
+                const size = 1 + Math.random() * 3;
+                
+                expCtx.beginPath();
+                expCtx.arc(
+                    40 + Math.cos(angle) * distance,
+                    40 + Math.sin(angle) * distance,
+                    size, 0, Math.PI * 2
+                );
+                expCtx.fill();
+            }
+            
+            // Hiển thị sprite vụ nổ
+            document.body.appendChild(document.createElement('br'));
+            document.body.appendChild(explosionCanvas);
+            
+            // Tạo link để tải xuống
+            const explosionLink = document.createElement('a');
+            explosionLink.innerHTML = `Tải xuống hình ảnh vụ nổ ${i}`;
+            explosionLink.href = explosionCanvas.toDataURL('image/png');
+            explosionLink.download = `explosion_${i}.png`;
+            document.body.appendChild(explosionLink);
+            document.body.appendChild(document.createElement('br'));
+        }
+        
+        // Tạo chim xám
+        for (let i = 0; i < 2; i++) {
+            const grayBirdCanvas = document.createElement('canvas');
+            grayBirdCanvas.width = 40;
+            grayBirdCanvas.height = 30;
+            const birdCtx = grayBirdCanvas.getContext('2d');
+            
+            // Draw gray bird body
+            birdCtx.fillStyle = '#808080'; // Gray color
+            birdCtx.beginPath();
+            birdCtx.ellipse(20, 15, 15, 10, 0, 0, Math.PI * 2);
+            birdCtx.fill();
+            
+            // Draw head
+            birdCtx.fillStyle = '#606060'; // Darker gray for head
+            birdCtx.beginPath();
+            birdCtx.arc(32, 13, 7, 0, Math.PI * 2);
+            birdCtx.fill();
+            
+            // Draw beak
+            birdCtx.fillStyle = '#333333'; // Dark gray for beak
+            birdCtx.beginPath();
+            birdCtx.moveTo(39, 13); // Start at tip of beak
+            birdCtx.lineTo(45, 11); // Top point
+            birdCtx.lineTo(45, 15); // Bottom point
+            birdCtx.closePath();
+            birdCtx.fill();
+            
+            // Draw eye
+            birdCtx.fillStyle = '#990000'; // Red eye for angry look
+            birdCtx.beginPath();
+            birdCtx.arc(35, 11, 2, 0, Math.PI * 2);
+            birdCtx.fill();
+            
+            // Add white glint to eye for more expression
+            birdCtx.fillStyle = 'white';
+            birdCtx.beginPath();
+            birdCtx.arc(34.5, 10.5, 0.8, 0, Math.PI * 2);
+            birdCtx.fill();
+            
+            // Draw wings - different position based on animation frame
+            birdCtx.fillStyle = '#707070'; // Slightly lighter gray for wings
+            birdCtx.beginPath();
+            
+            if (i === 0) {
+                // Wings up
+                birdCtx.ellipse(18, 8, 10, 5, Math.PI / 6, 0, Math.PI * 2);
+            } else {
+                // Wings down
+                birdCtx.ellipse(18, 18, 10, 5, -Math.PI / 6, 0, Math.PI * 2);
+            }
+            birdCtx.fill();
+            
+            // Draw tail
+            birdCtx.fillStyle = '#606060';
+            birdCtx.beginPath();
+            birdCtx.moveTo(5, 15);
+            birdCtx.lineTo(0, 10);
+            birdCtx.lineTo(0, 20);
+            birdCtx.closePath();
+            birdCtx.fill();
+            
+            // Hiển thị sprite chim xám
+            document.body.appendChild(document.createElement('br'));
+            document.body.appendChild(grayBirdCanvas);
+            
+            // Tạo link để tải xuống
+            const birdLink = document.createElement('a');
+            birdLink.innerHTML = `Tải xuống hình ảnh chim xám ${i}`;
+            birdLink.href = grayBirdCanvas.toDataURL('image/png');
+            birdLink.download = `gray_bird_${i}.png`;
+            document.body.appendChild(birdLink);
+            document.body.appendChild(document.createElement('br'));
+        }
+    </script>
+</body>
+</html>

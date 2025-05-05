@@ -1,0 +1,2680 @@
+// Game constants
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 300;
+const GROUND_HEIGHT = 20;
+const GROUND_Y = GAME_HEIGHT - GROUND_HEIGHT;
+
+// Player constants
+const PLAYER_WIDTH = 50;
+const PLAYER_HEIGHT = 70;
+const PLAYER_START_X = 50;
+const PLAYER_CENTER_X = GAME_WIDTH * 0.4; // Vị trí ở giữa màn hình mà người chơi sẽ di chuyển đến
+const PLAYER_REPOSITION_SPEED = 0.3; // Tốc độ di chuyển người chơi ra giữa
+const PLAYER_Y = GROUND_Y - PLAYER_HEIGHT;
+const JUMP_FORCE = -15;
+const GRAVITY = 0.8;
+
+// Dog constants
+const DOG_WIDTH = 45;
+const DOG_HEIGHT = 35;
+const DOG_START_X = -100; // Start offscreen
+const DOG_Y = GROUND_Y - DOG_HEIGHT;
+const DOG_BASE_SPEED = 4.5; // Slightly slower than game speed initially
+const DOG_CHASE_DISTANCE = 200; // Khoảng cách mà chú chó sẽ duy trì với người chơi khi bắt đầu đuổi theo
+const DOG_JUMP_FORCE = -12; // Lực nhảy của chú chó (giảm từ -14 xuống -12 để nhảy tự nhiên hơn)
+const DOG_JUMP_DETECT_DISTANCE = 150; // Khoảng cách phát hiện vật cản để nhảy (tăng khoảng cách phát hiện)
+const DOG_OBSTACLE_MARGIN = 30; // Khoảng cách chuẩn bị nhảy
+const DOG_BEHAVIOR_CHANGE_DELAY = 100; // Độ trễ để thay đổi hành vi (frames)
+const DOG_MIN_CHASE_DISTANCE = 120; // Khoảng cách tối thiểu khi đuổi theo
+const DOG_ATTACK_DISTANCE = 50; // Khoảng cách khi chó bắt đầu tấn công
+const DOG_POUNCE_FORCE = -10; // Lực nhảy khi chó tấn công
+const DOG_RAGE_START_SCORE = 300; // Điểm số bắt đầu khi chó trở nên hung dữ
+const DOG_RAGE_ATTACK_CHANCE_INCREASE = 0.1; // Tăng xác suất tấn công mỗi 200 điểm
+const DOG_RAGE_SPEED_FACTOR = 0.02; // Hệ số tăng tốc độ khi hung dữ
+const DOG_RAGE_ATTACK_INTERVAL_REDUCTION = 0.8; // Giảm thời gian giữa các lần tấn công
+
+// Gray Bird constants
+const GRAY_BIRD_WIDTH = 40;
+const GRAY_BIRD_HEIGHT = 30;
+const GRAY_BIRD_MIN_SCORE = 100; // Điểm tối thiểu để chim xám xuất hiện
+const GRAY_BIRD_CHANCE = 0.25; // Xác suất xuất hiện chim xám thay vì chướng ngại vật khác khi đạt đủ điểm
+const GRAY_BIRD_CHASE_SPEED = 6; // Tốc độ chim xám khi đuổi theo người chơi
+const GRAY_BIRD_REVERSE_DELAY = 300; // Thời gian trì hoãn trước khi chim xám quay đầu đuổi theo (milliseconds)
+
+// Speed progression constants
+const INITIAL_GAME_SPEED = 5;
+const MAX_GAME_SPEED = 14; // Tốc độ tối đa của trò chơi
+const SPEED_INCREASE_INTERVAL = 200; // Tăng tốc độ mỗi 200 điểm (thay vì 1000)
+const BASE_SPEED_INCREMENT = 0.05; // Mức tăng tốc độ cơ bản
+const PROGRESSIVE_SPEED_FACTOR = 0.001; // Hệ số tăng tốc progressively
+
+// Native constants
+const NATIVE_WIDTH = 40;
+const NATIVE_HEIGHT = 70;
+const NATIVE_MIN_SCORE = 200; // Điểm tối thiểu để người thổ dân xuất hiện (đã đặt lại về 200 điểm)
+const NATIVE_CHANCE = 0.15; // Xác suất xuất hiện người thổ dân thay vì chướng ngại vật khác
+const SPEAR_WIDTH = 60;
+const SPEAR_HEIGHT = 10;
+const SPEAR_SPEED = 8;
+
+// Mine constants
+const MINE_WIDTH = 30;
+const MINE_HEIGHT = 20;
+const MINE_MIN_SCORE = 50; // Điểm tối thiểu để quả mìn xuất hiện (giảm từ 150 xuống 50)
+const MINE_CHANCE = 0.15; // Xác suất xuất hiện quả mìn
+const EXPLOSION_DURATION = 4; // Thời gian hiển thị hiệu ứng nổ (giảm từ 6 xuống 4 frames để nổ nhanh và dứt khoát hơn)
+
+// Game variables
+let canvas;
+let ctx;
+let player;
+let dog;
+let obstacles = [];
+let gameSpeed = INITIAL_GAME_SPEED;
+let speedMultiplier = 1.0; // Hệ số nhân tốc độ để hiển thị
+let lastSpeedIncreaseScore = 0; // Điểm số cuối cùng khi tăng tốc độ
+let score = 0;
+let highScore = 0;
+let gameOver = false;
+let animationFrame;
+let lastObstacleTime = 0;
+let backgroundItems = [];
+let dogCatchupRate = 0.0005; // How quickly the dog speeds up
+let dogSpeedVariation = 0; // Biến thay đổi tốc độ của chó tạo hiệu ứng thực tế
+let dogApproachMode = false; // Chế độ chó tiến gần người chơi
+let birdsJumpedOver = 0; // Số lượng chim đã nhảy qua
+let hasReverseBird = false; // Có chim quay đầu theo đuổi người chơi không
+
+// Weather variables
+let isRaining = false;
+let rainDrops = [];
+let lightningFlash = false;
+let lightningTimer = 0;
+let lightningStrike = false;
+let lightningX = 0;
+let lightningY = 0;
+let weatherTimer = 0;
+let weatherDuration = 0;
+
+let jumpLightningChance = 0.05; // Xác suất ban đầu bị sét đánh khi nhảy trong mưa
+let jumpCount = 0; // Đếm số lần nhảy trong mưa
+let playerElectrocuted = false; // Trạng thái người chơi bị sét đánh
+let playerElectrocutionTimer = 0; // Thời gian hiệu ứng bị sét đánh
+let rainCooldownTimer = 0; // Bộ đếm thời gian nghỉ giữa các đợt mưa
+const RAIN_COOLDOWN = 600; // Thời gian nghỉ giữa các đợt mưa (10 giây ở 60fps)
+let darkCloudWarning = false; // Cảnh báo đám mây đen trước khi sét đánh
+let darkCloudTimer = 0; // Thời gian hiển thị đám mây đen
+const DARK_CLOUD_DURATION = 60; // Thời gian hiển thị đám mây đen (1 giây ở 60fps)
+
+// Earthquake variables
+let isEarthquake = false;
+let earthquakeTimer = 0;
+let earthquakeDuration = 0;
+let earthquakeIntensity = 0;
+let earthquakeCooldown = 0;
+const EARTHQUAKE_MIN_SCORE = 100; // Điểm tối thiểu để có thể xảy ra động đất
+const EARTHQUAKE_COOLDOWN = 900; // 15 giây giữa các đợt động đất (ở 60fps)
+const EARTHQUAKE_BASE_DURATION = 180; // Khoảng 3 giây ở 60fps
+const EARTHQUAKE_CHANCE = 0.0005; // Xác suất mỗi frame có thể xảy ra động đất
+
+// Speed boost/reduction variables
+let speedEffectActive = false; // Trạng thái hiệu ứng tăng/giảm tốc độ
+let speedEffectTimer = 0; // Thời gian hiệu ứng còn lại
+let speedEffectMultiplier = 1.0; // Hệ số nhân tốc độ (>1: tăng, <1: giảm)
+let speedEffectCooldown = 0; // Thời gian chờ giữa các hiệu ứng
+const SPEED_EFFECT_MIN_SCORE = 200; // Điểm tối thiểu để hiệu ứng tốc độ xuất hiện
+const SPEED_EFFECT_CHANCE = 0.001; // Xác suất hiệu ứng xuất hiện mỗi frame
+const SPEED_EFFECT_DURATION = 180; // Thời gian hiệu ứng kéo dài (3 giây ở 60fps)
+const SPEED_EFFECT_COOLDOWN = 600; // Thời gian chờ giữa các hiệu ứng (10 giây ở 60fps)
+
+let groundY = GROUND_Y; // Biến lưu vị trí y của mặt đất
+
+// Biến thời gian
+let lastFrameTime = 0; // Dùng để tính toán delta time
+const fixedTimeStep = 1000 / 60; // Mục tiêu 60fps
+
+// Sprite images
+let playerRunningSprites = [];
+let playerJumpingSprite;
+let playerStarJumpSprite;
+let playerDuckingSprite;
+let cactusSingleSprite;
+let cactusDoubleSprite;
+let cactusTripleSprite;
+let birdFlyingSprites = [];
+let grayBirdSprites = []; // Gray bird sprites
+let dogRunningSprites = [];
+let dogAttackSprite;
+let dogJumpSprite;
+let spikePitSprites = []; 
+let groundSpikeSprites = []; // Sprites cho gai nhọn từ mặt đất
+let rainPattern; // Sprite cho hiệu ứng mưa
+let lightningSprites = []; // Sprites cho hiệu ứng sét đánh
+let groundSprite;
+let mountainSprite;
+let nativeSprite; // Sprite cho người thổ dân
+let spearSprite; // Sprite cho cây lao
+let mineSprite; // Sprite cho quả mìn
+let explosionSprites = []; // Sprites cho hiệu ứng nổ
+let imagesLoaded = 0;
+let totalImages = 33; // Cập nhật tổng số lượng hình ảnh (thêm 2 sprites của chim xám)
+let gameStarted = false;
+
+// Arrays to track active spears
+let spears = [];
+
+// Animation frames for the human character
+const PLAYER_FRAMES = 3;
+let currentPlayerFrame = 0;
+let frameCounter = 0;
+let birdFrameCounter = 0;
+let currentBirdFrame = 0;
+let dogFrameCounter = 0;
+let currentDogFrame = 0;
+
+// Initialize the game
+window.onload = function() {
+    canvas = document.getElementById('game');
+    ctx = canvas.getContext('2d');
+    
+    // Load high score from local storage if available
+    if (localStorage.getItem('humanRunHighScore')) {
+        highScore = parseInt(localStorage.getItem('humanRunHighScore'));
+        document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+    } 
+    
+    loadSprites();
+    
+    // Initialize the player
+    player = {
+        x: PLAYER_START_X,
+        y: PLAYER_Y + 2, // Adjusted down by 2 pixels to ensure feet touch ground
+        width: PLAYER_WIDTH,
+        height: PLAYER_HEIGHT,
+        velocityY: 0,
+        jumping: false,
+        starJumping: false,
+        jumpPeak: false,
+        jumpHeight: 0,
+        ducking: false,
+        targetX: PLAYER_START_X // Vị trí mục tiêu mà người chơi sẽ di chuyển đến
+    };
+    
+    // Initialize the dog
+    dog = {
+        x: DOG_START_X,
+        y: DOG_Y + 3, // Adjusted down by 3 pixels to ensure paws touch ground
+        width: DOG_WIDTH,
+        height: DOG_HEIGHT,
+        speed: DOG_BASE_SPEED,
+        attacking: false,
+        active: false, // Dog only starts chasing after a certain score
+        barkTimer: 0,  // Thời gian để tạo hiệu ứng chó sủa
+        lastBarkTime: 0, // Thời gian sủa gần nhất
+        jumping: false, // Trạng thái nhảy của chó
+        velocityY: 0, // Vận tốc nhảy của chó
+        jumpCooldown: 0, // Thời gian chờ giữa các lần nhảy
+        obstacleAwareness: 800, // Khoảng cách nhận biết vật cản phía trước
+        behaviorTimer: 0, // Bộ đếm thời gian cho hành vi
+        behaviorState: 'steady', // Trạng thái hành vi: steady, closing, backing, attack
+        lastBehaviorChange: 0, // Thời điểm thay đổi hành vi gần nhất
+        prepareAttack: false, // Trạng thái chuẩn bị tấn công
+        biteTimer: 0, // Thời gian há miệng khi tấn công
+        biteCooldown: 0, // Thời gian hồi chiêu cắn
+        jumpStrength: 1.0, // Hệ số lực nhảy (thay đổi tùy theo chướng ngại vật)
+        nextObstacleType: null, // Loại chướng ngại vật tiếp theo để đối phó
+        pounceReady: false // Sẵn sàng nhảy tới tấn công
+    };
+    
+    // Generate initial background items
+    generateBackgroundItems();
+    
+    // Add event listeners for controls
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+};
+
+// Load all sprite images
+function loadSprites() {
+    // Load player running sprites
+    for(let i = 0; i < PLAYER_FRAMES; i++) {
+        const runningSprite = new Image();
+        runningSprite.src = `images/player_run_${i}.png`;
+        runningSprite.onload = imageLoaded;
+        playerRunningSprites.push(runningSprite);
+    }
+    
+    // Load player jumping sprite
+    playerJumpingSprite = new Image();
+    playerJumpingSprite.src = 'images/player_jump.png';
+    playerJumpingSprite.onload = imageLoaded;
+    
+    // Load star jump sprite
+    playerStarJumpSprite = new Image();
+    playerStarJumpSprite.src = 'images/player_star_jump.png';
+    playerStarJumpSprite.onload = imageLoaded;
+    
+    // Load player ducking sprite
+    playerDuckingSprite = new Image();
+    playerDuckingSprite.src = 'images/player_duck.png';
+    playerDuckingSprite.onload = imageLoaded;
+    
+    // Load cactus sprites
+    cactusSingleSprite = new Image();
+    cactusSingleSprite.src = 'images/cactus_small.png';
+    cactusSingleSprite.onload = imageLoaded;
+    
+    cactusDoubleSprite = new Image();
+    cactusDoubleSprite.src = 'images/cactus_medium.png';
+    cactusDoubleSprite.onload = imageLoaded;
+    
+    cactusTripleSprite = new Image();
+    cactusTripleSprite.src = 'images/cactus_large.png';
+    cactusTripleSprite.onload = imageLoaded;
+    
+    // Load bird sprites
+    for(let i = 0; i < 2; i++) {
+        const birdSprite = new Image();
+        birdSprite.src = `images/bird_${i}.png`;
+        birdSprite.onload = imageLoaded;
+        birdFlyingSprites.push(birdSprite);
+    }
+    
+    // Load gray bird sprites
+    createGrayBirdSprites();
+    
+    // Load dog sprites
+    for(let i = 0; i < 3; i++) {
+        const dogSprite = new Image();
+        dogSprite.src = `images/dog_run_${i}.png`;
+        dogSprite.onload = imageLoaded;
+        dogRunningSprites.push(dogSprite);
+    }
+    
+    // Load dog attack sprite
+    dogAttackSprite = new Image();
+    dogAttackSprite.src = 'images/dog_attack.png';
+    dogAttackSprite.onload = imageLoaded;
+    
+    // Load dog jump sprite
+    dogJumpSprite = new Image();
+    dogJumpSprite.src = 'images/dog_jump.png';
+    dogJumpSprite.onload = imageLoaded;
+    
+    // Load spike pit sprites
+    for (let i = 0; i < 2; i++) {
+        const spikePitSprite = new Image();
+        spikePitSprite.src = `images/spike_pit_${i}.png`;
+        spikePitSprite.onload = imageLoaded;
+        spikePitSprites.push(spikePitSprite);
+    }
+    
+    // Load ground spike sprites
+    for (let i = 0; i < 3; i++) {
+        const groundSpikeSprite = new Image();
+        groundSpikeSprite.src = `images/ground_spike_${i}.png`;
+        groundSpikeSprite.onload = imageLoaded;
+        groundSpikeSprites.push(groundSpikeSprite);
+    }
+    
+    // Load lightning sprites
+    for(let i = 0; i < 3; i++) {
+        const lightningSprite = new Image();
+        lightningSprite.src = `images/lightning_${i}.png`;
+        lightningSprite.onload = imageLoaded;
+        lightningSprites.push(lightningSprite);
+    }
+    
+    // Load rain pattern
+    rainPattern = new Image();
+    rainPattern.src = 'images/rain_pattern.png';
+    rainPattern.onload = imageLoaded;
+    
+    // Load environment sprites
+    groundSprite = new Image();
+    groundSprite.src = 'images/ground.png?v=' + new Date().getTime(); // Thêm timestamp để tránh cache
+    groundSprite.onload = imageLoaded;
+    
+    mountainSprite = new Image();
+    mountainSprite.src = 'images/mountain.png';
+    mountainSprite.onload = imageLoaded;
+    
+    // Tạo và vẽ sprite người thổ dân
+    nativeSprite = document.createElement('canvas');
+    nativeSprite.width = NATIVE_WIDTH;
+    nativeSprite.height = NATIVE_HEIGHT;
+    const nativeCtx = nativeSprite.getContext('2d');
+    
+    // Vẽ thân người thổ dân
+    nativeCtx.fillStyle = '#8B4513'; // màu da nâu
+    nativeCtx.fillRect(10, 15, 20, 40); // thân
+    
+    // Vẽ đầu
+    nativeCtx.beginPath();
+    nativeCtx.arc(20, 10, 10, 0, Math.PI * 2);
+    nativeCtx.fill();
+    
+    // Vẽ tay cầm lao
+    nativeCtx.fillRect(5, 20, 5, 25); // tay trái
+    nativeCtx.fillRect(30, 25, 10, 5); // tay phải
+    
+    // Vẽ chân
+    nativeCtx.fillRect(12, 55, 8, 15); // chân trái
+    nativeCtx.fillRect(23, 55, 8, 15); // chân phải
+    
+    // Vẽ khăn đầu
+    nativeCtx.fillStyle = 'red';
+    nativeCtx.fillRect(15, 3, 10, 5);
+    
+    // Vẽ trang phục
+    nativeCtx.fillStyle = '#FFA500'; // màu cam
+    nativeCtx.fillRect(10, 40, 20, 15); // váy
+    
+    // Vẽ cây lao
+    nativeCtx.fillStyle = '#8B4513'; // màu nâu
+    nativeCtx.fillRect(0, 24, 35, 2); // thanh lao
+    nativeCtx.fillStyle = 'gray';
+    nativeCtx.beginPath();
+    nativeCtx.moveTo(0, 21);
+    nativeCtx.lineTo(0, 29);
+    nativeCtx.lineTo(-10, 25);
+    nativeCtx.closePath();
+    nativeCtx.fill(); // đầu lao
+    
+    // Tạo và vẽ sprite cây lao
+    spearSprite = document.createElement('canvas');
+    spearSprite.width = SPEAR_WIDTH;
+    spearSprite.height = SPEAR_HEIGHT;
+    const spearCtx = spearSprite.getContext('2d');
+    
+    // Vẽ thanh lao
+    spearCtx.fillStyle = '#8B4513'; // màu nâu gỗ
+    spearCtx.fillRect(10, 2, 40, 6);
+    
+    // Vẽ đầu lao
+    spearCtx.fillStyle = 'gray';
+    spearCtx.beginPath();
+    spearCtx.moveTo(0, 0);
+    spearCtx.lineTo(15, 5);
+    spearCtx.lineTo(0, 10);
+    spearCtx.closePath();
+    spearCtx.fill();
+    
+    // Vẽ đuôi lao
+    spearCtx.fillStyle = 'darkred';
+    spearCtx.beginPath();
+    spearCtx.moveTo(50, 0);
+    spearCtx.lineTo(60, 5);
+    spearCtx.lineTo(50, 10);
+    spearCtx.closePath();
+    spearCtx.fill();
+    
+    // Tạo và vẽ sprite quả mìn
+    mineSprite = document.createElement('canvas');
+    mineSprite.width = MINE_WIDTH;
+    mineSprite.height = MINE_HEIGHT;
+    const mineCtx = mineSprite.getContext('2d');
+    
+    // Vẽ phần thân quả mìn - màu gần giống với cát sa mạc để khó phát hiện
+    mineCtx.fillStyle = '#C8AA74'; // Màu gần với màu đất sa mạc
+    mineCtx.beginPath();
+    mineCtx.ellipse(MINE_WIDTH/2, MINE_HEIGHT - 6, 12, 8, 0, 0, Math.PI * 2);
+    mineCtx.fill();
+    
+    // Thêm một chút đường viền để tạo chiều sâu
+    mineCtx.strokeStyle = '#A88E60';
+    mineCtx.lineWidth = 1;
+    mineCtx.beginPath();
+    mineCtx.ellipse(MINE_WIDTH/2, MINE_HEIGHT - 6, 12, 8, 0, 0, Math.PI * 2);
+    mineCtx.stroke();
+    
+    // Vẽ ngòi nổ
+    mineCtx.fillStyle = '#555';
+    mineCtx.beginPath();
+    mineCtx.arc(MINE_WIDTH/2, MINE_HEIGHT - 14, 3, 0, Math.PI * 2);
+    mineCtx.fill();
+    
+    // Thêm dây ngòi
+    mineCtx.strokeStyle = '#333';
+    mineCtx.lineWidth = 1.5;
+    mineCtx.beginPath();
+    mineCtx.moveTo(MINE_WIDTH/2, MINE_HEIGHT - 14);
+    mineCtx.lineTo(MINE_WIDTH/2, MINE_HEIGHT - 18);
+    mineCtx.stroke();
+    
+    // Thêm một ít chi tiết trên quả mìn để tạo điểm nhấn
+    mineCtx.fillStyle = '#AA8E60';
+    mineCtx.beginPath();
+    mineCtx.arc(MINE_WIDTH/2 - 5, MINE_HEIGHT - 5, 2, 0, Math.PI * 2);
+    mineCtx.fill();
+    mineCtx.beginPath();
+    mineCtx.arc(MINE_WIDTH/2 + 5, MINE_HEIGHT - 5, 2, 0, Math.PI * 2);
+    mineCtx.fill();
+    
+    // Tạo sprites cho hiệu ứng nổ
+    for (let i = 0; i < 3; i++) {
+        const explosionCanvas = document.createElement('canvas');
+        explosionCanvas.width = 80; // Kích thước lớn hơn quả mìn
+        explosionCanvas.height = 80;
+        const expCtx = explosionCanvas.getContext('2d');
+        
+        // Cột khói và lửa
+        const gradient = expCtx.createRadialGradient(40, 40, 5, 40, 40, 40);
+        gradient.addColorStop(0, 'rgba(255, 200, 50, 1)');     // Lõi vàng
+        gradient.addColorStop(0.3, 'rgba(255, 100, 50, 0.8)'); // Cam
+        gradient.addColorStop(0.6, 'rgba(150, 50, 50, 0.6)');  // Đỏ sẫm
+        gradient.addColorStop(1, 'rgba(80, 80, 80, 0.2)');     // Rìa khói
+        
+        expCtx.fillStyle = gradient;
+        expCtx.beginPath();
+        expCtx.arc(40, 40, 35 + i * 5, 0, Math.PI * 2);
+        expCtx.fill();
+        
+        // Thêm các mảnh vỡ bay ra
+        expCtx.fillStyle = '#AA8E60';
+        for (let j = 0; j < 8 + i * 4; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 15 + Math.random() * (20 + i * 5);
+            const size = 1 + Math.random() * 3;
+            
+            expCtx.beginPath();
+            expCtx.arc(
+                40 + Math.cos(angle) * distance,
+                40 + Math.sin(angle) * distance,
+                size, 0, Math.PI * 2
+            );
+            expCtx.fill();
+        }
+        
+        explosionSprites.push(explosionCanvas);
+    }
+    
+    // Tính số lượng sprite đã tạo
+    imagesLoaded += 4; // 1 cho mìn + 3 cho hiệu ứng nổ
+    
+    // Tính nhẹ số lượng sprite đã load
+    imagesLoaded += 2;
+}
+
+// Called when each image is loaded
+function imageLoaded() {
+    imagesLoaded++;
+    
+    if (imagesLoaded === totalImages) {
+        // All images loaded, start the game
+        gameStarted = true;
+        // Start the game loop
+        gameLoop();
+    }
+}
+
+// Generate background items for parallax effect
+function generateBackgroundItems() {
+    // Add mountains (parallax background)
+    for (let i = 0; i < 3; i++) {
+        backgroundItems.push({
+            type: 'mountain',
+            x: i * 300,
+            y: GROUND_Y - 60,
+            width: 120,
+            height: 60,
+            speed: 0.5
+        });
+    }
+    
+    // Add small stones
+    for (let i = 0; i < 8; i++) {
+        backgroundItems.push({
+            type: 'stone',
+            x: Math.random() * GAME_WIDTH,
+            y: GROUND_Y - Math.random() * 5,
+            width: 2 + Math.random() * 4,
+            height: 2 + Math.random() * 3,
+            speed: 1
+        });
+    }
+}
+
+// Handle key press events
+function handleKeyDown(event) {
+    if ((event.code === 'Space' || event.code === 'ArrowUp') && !player.jumping && !gameOver) {
+        jump();
+    } else if (event.code === 'ArrowDown' && !gameOver) {
+        // Enable ducking
+        player.ducking = true;
+        player.height = PLAYER_HEIGHT / 2;
+        player.y = groundY - player.height;
+        
+        // If there's a dark cloud warning, ducking now will protect from lightning
+        if (darkCloudWarning) {
+            // Visual feedback to show the player successfully avoided the lightning
+            // Make the dark cloud disperse faster
+            darkCloudTimer = 10;
+        }
+    } else if (event.code === 'Space' && gameOver) {
+        resetGame();
+    }
+}
+
+// Handle key release events
+function handleKeyUp(event) {
+    if (event.code === 'ArrowDown') {
+        // Disable ducking
+        player.ducking = false;
+        player.height = PLAYER_HEIGHT;
+        player.y = groundY - player.height;
+    }
+}
+
+// Jump function
+function jump() {
+    player.jumping = true;
+    player.velocityY = JUMP_FORCE;
+    player.jumpHeight = 0;
+    player.jumpPeak = false;
+    player.starJumping = false;
+}
+
+// Main game loop
+function gameLoop(timestamp) {
+    if (!gameStarted) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+    
+    // Tính toán delta time để chuẩn hóa tốc độ trò chơi
+    const deltaTime = timestamp - lastFrameTime;
+    lastFrameTime = timestamp;
+    
+    // Cập nhật trạng thái game
+    update();
+    
+    // Vẽ khung hình
+    draw();
+    
+    if (!gameOver) {
+        animationFrame = requestAnimationFrame(gameLoop);
+    }
+}
+
+// Update game state
+function update() {
+    // Update score
+    score += 1;
+    document.getElementById('score').textContent = `Score: ${Math.floor(score / 10)}`;
+    
+    // Tấn công đặc biệt khi người chơi đạt 999 điểm
+    if (Math.floor(score / 10) === 999 && dog.active && !dog.specialAttack) {
+        dog.specialAttack = true;
+        dog.speed = dog.speed * 2; // Tăng gấp đôi tốc độ
+        dog.behaviorState = 'attack';
+        dog.prepareAttack = true;
+        dog.biteTimer = 60; // Thời gian tấn công dài hơn
+    }
+    
+    // Kiểm tra xem người chơi có gần chướng ngại vật không để tạo khu vực an toàn
+    let playerNearObstacle = false;
+    const safetyDistance = 100; // Khoảng cách an toàn xung quanh vật cản
+    
+    // Kiểm tra từng chướng ngại vật để xem người chơi có gần không
+    for (const obstacle of obstacles) {
+        // Tính khoảng cách từ người chơi đến chướng ngại vật
+        const distanceToObstacle = Math.abs((player.x + player.width/2) - (obstacle.x + obstacle.width/2));
+        
+        // Nếu người chơi trong phạm vi an toàn của vật cản
+        if (distanceToObstacle < safetyDistance) {
+            playerNearObstacle = true;
+            break;
+        }
+    }
+    
+    // Increase game speed progressively
+    if (score - lastSpeedIncreaseScore >= SPEED_INCREASE_INTERVAL) {
+        // Tăng tốc độ dựa trên mức điểm hiện tại (điều chỉnh lại để tăng dần hợp lý hơn)
+        const currentScore = Math.floor(score / 10);
+        
+        // Giảm hệ số tăng tốc để tăng tốc độ từ từ hơn
+        const progressiveFactor = Math.min(score / 15000, 0.7); // Giảm hệ số tăng tốc tối đa
+        const speedIncrement = BASE_SPEED_INCREMENT * (1 + progressiveFactor * PROGRESSIVE_SPEED_FACTOR * score);
+        
+        // Giới hạn tốc độ tối đa thấp hơn
+        gameSpeed = Math.min(MAX_GAME_SPEED - 2, gameSpeed + speedIncrement);
+        
+        // Cập nhật hệ số nhân tốc độ cho hiển thị (1x, 1.5x, 2x, etc.)
+        speedMultiplier = gameSpeed / INITIAL_GAME_SPEED;
+        
+        // Cập nhật điểm gần nhất khi tăng tốc độ
+        lastSpeedIncreaseScore = score;
+        
+        // Hiển thị tốc độ hiện tại trên màn hình
+        document.getElementById('game-speed').textContent = `Speed: ${speedMultiplier.toFixed(1)}x`;
+    }
+    
+    // Activate dog after certain score (500 points)
+    if (score >= 500 && !dog.active) {
+        dog.active = true;
+        dog.x = -100; // Start off screen
+        player.targetX = PLAYER_CENTER_X; // Bắt đầu di chuyển người chơi ra giữa
+    }
+    
+    // Di chuyển người chơi từ từ ra giữa màn hình khi chó xuất hiện
+    if (dog.active && player.x < player.targetX) {
+        player.x += PLAYER_REPOSITION_SPEED * gameSpeed;
+        if (player.x > player.targetX) {
+            player.x = player.targetX;
+        }
+    }
+    
+    // Update player position (gravity and jumping)
+    if (player.jumping) {
+        player.velocityY += GRAVITY;
+        player.y += player.velocityY;
+        
+        // Track jump height from ground
+        player.jumpHeight = PLAYER_Y - player.y;
+        
+        // Check if at peak of jump (when velocity crosses zero)
+        if (player.velocityY >= 0 && !player.jumpPeak) {
+            player.jumpPeak = true;
+            player.starJumping = true;
+            // Make star jump a bit wider when at peak
+            player.width = 70;
+            
+            // Kiểm tra xét đánh khi đang mưa và người chơi nhảy
+            if (isRaining && !lightningStrike) {
+                checkLightningStrike();
+            }
+        }
+        
+        // On the way down, switch back to regular jump pose
+        if (player.velocityY > 5 && player.starJumping) {
+            player.starJumping = false;
+            player.width = PLAYER_WIDTH;
+        }
+        
+        // Check if player has landed
+        if (player.y >= groundY - player.height) {
+            // Fixing potential ground clipping by ensuring exact placement
+            player.y = groundY - player.height;
+            player.jumping = false;
+            player.jumpPeak = false;
+            player.starJumping = false;
+            player.velocityY = 0;
+            player.width = PLAYER_WIDTH;
+        }
+    } else {
+        // Ensure player is always correctly positioned on the ground when not jumping
+        // This prevents floating or clipping through ground issues
+        player.y = groundY - player.height;
+    }
+    
+    // Update dog position and behavior
+if (dog.active) {
+    // Thêm biến thể tốc độ chó để tạo chuyển động tự nhiên
+    const currentTime = Date.now();
+    const gameFrameTime = score;
+    // Tăng biến thiên của dao động sin để tạo chuyển động tự nhiên hơn
+    dogSpeedVariation = Math.sin(currentTime / 200) * 0.3;
+    
+    // Lấy điểm số hiện tại để kiểm tra mức độ cuồng nộ của chó
+    const currentScore = Math.floor(score / 10);
+    
+    // Kiểm tra nếu điểm đã đạt đến mức kích hoạt trạng thái cuồng nộ
+    const dogRageLevel = Math.max(0, Math.floor((currentScore - DOG_RAGE_START_SCORE) / 200));
+    
+    // Quản lý trạng thái hành vi của chú chó
+    dog.behaviorTimer++;
+    
+    // Thay đổi hành vi chó theo thời gian để tạo cảm giác tự nhiên
+    if (dog.behaviorTimer > DOG_BEHAVIOR_CHANGE_DELAY && 
+        gameFrameTime - dog.lastBehaviorChange > DOG_BEHAVIOR_CHANGE_DELAY * 
+        (currentScore > DOG_RAGE_START_SCORE ? Math.max(0.5, 1 - dogRageLevel * DOG_RAGE_ATTACK_INTERVAL_REDUCTION) : 1)) {
+        
+        // Lưu thời gian thay đổi hành vi
+        dog.lastBehaviorChange = gameFrameTime;
+        dog.behaviorTimer = 0;
+        
+        // Xác định hành vi tiếp theo dựa trên xác suất và khoảng cách
+        const distanceToPlayer = player.x - dog.x - dog.width;
+        const random = Math.random();
+        
+        // Điều chỉnh khoảng cách tấn công dựa vào điểm số
+        let attackDistance = DOG_ATTACK_DISTANCE;
+        // Tăng khoảng cách tấn công khi điểm cao
+        if (currentScore > DOG_RAGE_START_SCORE) {
+            attackDistance += 10 + dogRageLevel * 5; // Tăng thêm khoảng cách tấn công theo mức điểm
+        }
+        
+        // Tăng xác suất tấn công khi điểm cao
+        let attackChance = 0.3; // Xác suất cơ bản
+        if (currentScore > DOG_RAGE_START_SCORE) {
+            attackChance += dogRageLevel * DOG_RAGE_ATTACK_CHANCE_INCREASE; // Tăng xác suất tấn công dựa vào mức điểm
+            attackChance = Math.min(0.8, attackChance); // Giới hạn tối đa 80%
+        }
+        
+        // Thêm biến đánh giá tâm trạng của chó để quyết định hành vi
+        let dogAggression = Math.random() + (dogRageLevel * 0.2);
+        
+        // Thêm biến kiểm tra không gian xung quanh để quyết định hành vi thông minh hơn
+        const playerIsJumping = player.jumping;
+        const nearObstacle = playerNearObstacle;
+        
+        // Chó sẽ trở nên thông minh hơn khi điểm số cao
+        if (currentScore > 500) {
+            // Nếu người chơi đang nhảy, chó có thể chờ
+            if (playerIsJumping && random < 0.4) {
+                dog.behaviorState = 'steady';
+                // Thỉnh thoảng chó sẽ "nhìn lên" theo người chơi khi họ nhảy
+                if (random < 0.15) {
+                    // Đây chỉ là thay đổi trạng thái nội bộ, không cần thay đổi sprite
+                    dog.lookingUp = true;
+                    setTimeout(() => {
+                        dog.lookingUp = false;
+                    }, 300);
+                }
+            }
+            // Nếu người chơi gần chướng ngại vật, chó có thể chờ đợi
+            else if (nearObstacle && random < 0.7) {
+                dog.behaviorState = distanceToPlayer < DOG_MIN_CHASE_DISTANCE ? 'backing' : 'steady';
+            }
+            // Xử lý bình thường các trường hợp còn lại
+            else if (distanceToPlayer < attackDistance || (random < attackChance && dogAggression > 0.7)) {
+                // Gần người chơi hoặc xác suất tấn công cao - tấn công
+                dog.behaviorState = 'attack';
+                dog.prepareAttack = true;
+                dog.biteTimer = 30; // Thời gian há miệng
+                
+                // Hiển thị hiệu ứng cuồng nộ khi tấn công với điểm cao
+                if (currentScore > DOG_RAGE_START_SCORE && random < 0.3) {
+                    showSpeedMessage("Rage Attack!", "rgb(255, 0, 0)");
+                }
+            } 
+            else if (distanceToPlayer < DOG_MIN_CHASE_DISTANCE) {
+                // Khoảng cách gần - hành vi phụ thuộc vào tâm trạng của chó
+                if ((currentScore > DOG_RAGE_START_SCORE && dogAggression > 0.6) || 
+                    (random < 0.4 + dogRageLevel * 0.1)) {
+                    // Nếu điểm cao hoặc đang hung dữ, có xác suất chó sẽ tấn công thay vì lùi lại
+                    dog.behaviorState = 'attack';
+                    dog.prepareAttack = true;
+                    dog.biteTimer = 30; // Thời gian há miệng
+                } else {
+                    // Ngẫu nhiên lựa chọn giữa lùi lại hoặc đứng yên tạo cảm giác tự nhiên
+                    dog.behaviorState = random < 0.7 ? 'backing' : 'steady';
+                }
+            } 
+            else if (distanceToPlayer > DOG_CHASE_DISTANCE * 1.5) {
+                // Khoảng cách xa - đuổi theo
+                dog.behaviorState = 'closing';
+            } 
+            else if (random < 0.5 - (dogRageLevel * 0.1)) {
+                // Thỉnh thoảng đứng yên quan sát (giảm xác suất khi điểm cao)
+                dog.behaviorState = 'steady';
+            } 
+            else if (random < 0.8 || dogAggression > 0.8) {
+                // Đuổi theo nếu đang hung dữ hoặc với xác suất cao
+                dog.behaviorState = 'closing';
+            } 
+            else {
+                // Đôi khi lùi lại dù ở khoảng cách trung bình (ít hơn khi điểm cao)
+                dog.behaviorState = currentScore > DOG_RAGE_START_SCORE && dogAggression > 0.5 ? 'closing' : 'backing';
+            }
+        } else {
+            // Hành vi đơn giản hơn ở điểm số thấp
+            if (distanceToPlayer < attackDistance && random < attackChance) {
+                // Tấn công đơn giản ở khoảng cách gần
+                dog.behaviorState = 'attack';
+                dog.prepareAttack = true;
+                dog.biteTimer = 30;
+            } 
+            else if (distanceToPlayer < DOG_MIN_CHASE_DISTANCE) {
+                // Duy trì khoảng cách
+                dog.behaviorState = random < 0.6 ? 'backing' : 'steady';
+            } 
+            else if (distanceToPlayer > DOG_CHASE_DISTANCE) {
+                // Đuổi theo khi xa
+                dog.behaviorState = 'closing';
+            } 
+            else {
+                // Ngẫu nhiên di chuyển hoặc đứng yên ở khoảng cách trung bình
+                dog.behaviorState = random < 0.6 ? 'closing' : 'steady';
+            }
+        }
+    }
+    
+    // Cập nhật tốc độ dựa trên trạng thái hành vi
+    let speedMultiplier = 1.0;
+    
+    // Tăng tốc độ tổng thể của chó khi điểm cao
+    if (currentScore > DOG_RAGE_START_SCORE) {
+        // Tăng tốc độ theo cấp độ cuồng nộ, nhưng làm mịn mà hơn
+        const rageSpeedBonus = 1.0 + (dogRageLevel * DOG_RAGE_SPEED_FACTOR * 0.8);
+        speedMultiplier *= rageSpeedBonus;
+    }
+    
+    // Điều chỉnh tốc độ dựa trên hành vi
+    if (dog.behaviorState === 'closing') {
+        // Tốc độ khi đuổi theo, tăng dần khi càng xa
+        const distanceFactor = Math.min(1.5, 1.0 + ((player.x - dog.x) / GAME_WIDTH) * 0.5);
+        speedMultiplier *= 1.3 * distanceFactor;
+    } else if (dog.behaviorState === 'backing') {
+        // Giảm tốc khi lùi lại, nhưng không quá chậm để không làm mất tính thử thách
+        speedMultiplier *= 0.7;
+    } else if (dog.behaviorState === 'attack') {
+        // Điều chỉnh tốc độ theo chu kỳ tấn công để tự nhiên hơn
+        if (dog.prepareAttack && dog.biteTimer > 20) {
+            // Giai đoạn chuẩn bị - tăng tốc từ từ
+            const prepareProgress = (30 - dog.biteTimer) / 10;
+            speedMultiplier *= 1.0 + prepareProgress * 2.0; // Tăng dần từ 1.0x đến 3.0x
+        } else if (dog.prepareAttack && dog.biteTimer > 5) {
+            // Giai đoạn phóng tới - tốc độ cao nhất
+            speedMultiplier *= 2.0 + (Math.random() * 0.5); // Tốc độ 2.0x-2.5x với dao động nhỏ
+        } else if (dog.prepareAttack && dog.biteTimer <= 5) {
+            // Giai đoạn cắn - chậm lại để "ngoạm"
+            speedMultiplier *= 0.3; // Giảm tốc mạnh khi sắp cắn
+        } else if (dog.biteCooldown > 40) {
+            // Giai đoạn ngay sau khi tấn công - lùi lại
+            speedMultiplier *= -1.2 - (Math.random() * 0.3); // Giá trị âm để di chuyển ngược lại với dao động tự nhiên
+        } else if (dog.biteCooldown > 20) {
+            // Giai đoạn phục hồi - duy trì khoảng cách và chậm lại
+            speedMultiplier *= -0.4 - (Math.random() * 0.2); // Lùi chậm hơn
+        } else if (dog.biteCooldown > 0) {
+            // Giai đoạn chuẩn bị tấn công tiếp - di chuyển chậm
+            speedMultiplier *= 0.3 + (Math.random() * 0.2); // Tốc độ thấp với dao động
+        }
+        
+        // Điều chỉnh tốc độ theo mức độ cuồng nộ
+        if (currentScore > DOG_RAGE_START_SCORE && dogRageLevel > 1) {
+            // Thêm hành vi hung hăng khi cuồng nộ cao
+            if (dog.prepareAttack && dog.biteTimer < 15 && Math.random() < 0.1 * dogRageLevel) {
+                // Đôi khi tăng tốc đột ngột khi ở mức cuồng nộ cao
+                speedMultiplier *= 1.2;
+            }
+            
+            // Giảm thời gian nghỉ khi ở mức cuồng nộ cao
+            if (dog.biteCooldown > 0) {
+                // Thỉnh thoảng có những đợt tấn công nhanh liên tiếp
+                if (Math.random() < 0.01 * dogRageLevel && dog.biteCooldown < 30) {
+                    dog.biteCooldown = Math.floor(dog.biteCooldown * 0.5);
+                }
+            }
+        }
+        
+        dog.attacking = true;
+    } else {
+        // Trạng thái bình thường 
+        dog.attacking = false;
+        
+        // Thêm biến thể tốc độ đôi lúc để tạo cảm giác tự nhiên
+        if (Math.random() < 0.1) {
+            speedMultiplier *= 0.9 + Math.random() * 0.2; // Đôi khi chậm lại hoặc tăng tốc nhẹ
+        }
+    }
+    
+    // Điều chỉnh thêm tốc độ dựa trên chướng ngại vật phía trước
+    // Chó sẽ giảm tốc độ khi thấy chướng ngại vật phía trước
+    let obstacleAhead = false;
+    let obstacleDistance = Infinity;
+    
+    for (const obstacle of obstacles) {
+        // Kiểm tra chướng ngại vật ở phía trước chó
+        if (obstacle.x > dog.x + dog.width) {
+            const distance = obstacle.x - (dog.x + dog.width);
+            if (distance < dog.obstacleAwareness && distance < obstacleDistance) {
+                obstacleAhead = true;
+                obstacleDistance = distance;
+                // Lưu loại chướng ngại vật để chó có thể phản ứng phù hợp
+                dog.nextObstacleType = obstacle.type;
+            }
+        }
+    }
+    
+    // Nếu có chướng ngại vật phía trước và đủ gần, điều chỉnh tốc độ
+    if (obstacleAhead && obstacleDistance < 100 && !dog.jumping) {
+        // Giảm tốc độ khi gần chướng ngại vật để chuẩn bị nhảy hoặc né tránh
+        const slowdownFactor = Math.max(0.7, obstacleDistance / 100);
+        speedMultiplier *= slowdownFactor;
+    }
+    
+    // Dog enters the screen and maintains a chase distance
+    if (dog.x < 0) {
+        dog.x += dog.speed * 1.5; // Di chuyển nhanh hơn để vào màn hình
+    } else {
+        // Chuyển động dựa trên trạng thái hành vi
+        dog.x += ((dog.speed + dogSpeedVariation) * speedMultiplier) - gameSpeed;
+        
+        // Đảm bảo chó không di chuyển quá xa so với người chơi
+        const distanceToPlayer = player.x - dog.x - dog.width;
+        if (distanceToPlayer > DOG_CHASE_DISTANCE * 2) {
+            dog.x += dog.speed * 0.5; // Tăng tốc nếu quá xa
+        } else if (distanceToPlayer < DOG_MIN_CHASE_DISTANCE * 0.5) {
+            // Khi điểm cao, chó có thể vẫn tiếp tục tấn công thay vì lùi lại
+            if (currentScore > DOG_RAGE_START_SCORE && Math.random() < 0.5) {
+                // Không lùi lại mà có thể tấn công
+                if (!dog.prepareAttack && dog.biteCooldown <= 0 && !dog.jumping) {
+                    dog.prepareAttack = true;
+                    dog.biteTimer = 30;
+                    dog.pounceReady = true; 
+                }
+            } else {
+                dog.x -= dog.speed * 0.3; // Lùi lại nếu quá gần
+            }
+        }
+        
+        // Đảm bảo chó không vượt qua vị trí của người chơi khi tấn công
+        if (dog.attacking && dog.x + dog.width > player.x) {
+            dog.x = player.x - dog.width;
+        }
+        
+        // Tăng tốc độ chó theo thời gian, nhanh hơn khi điểm cao
+        if (score > 1000) {
+            // Tăng tốc độ theo thời gian với mức tăng thấp hơn
+            const catchupRateMultiplier = currentScore > DOG_RAGE_START_SCORE ? 1 + (dogRageLevel * 0.5) : 1;
+            // Giảm tốc độ tăng một chút để không trở nên quá khó
+            dog.speed += (dogCatchupRate * 0.8) * gameSpeed * catchupRateMultiplier;
+            
+            // Giới hạn tốc độ tối đa của chó để không trở nên quá khó
+            const maxDogSpeed = gameSpeed * 1.1; // Tốc độ tối đa là 110% tốc độ trò chơi
+            if (dog.speed > maxDogSpeed) {
+                dog.speed = maxDogSpeed;
+            }
+        }
+    }
+    
+    // Xử lý há miệng cắn người chơi
+    if (dog.prepareAttack) {
+        dog.biteTimer--;
+        
+        // Chó há miệng cắn
+        if (dog.biteTimer > 0) {
+            dog.attacking = true;
+            
+            // Thêm hiệu ứng lao về phía trước khi cắn
+            if (dog.biteTimer < 10 && !dog.jumping && dog.pounceReady) {
+                dog.jumping = true;
+                // Tăng lực nhảy khi điểm cao để tạo hiệu ứng tấn công mạnh mẽ hơn
+                const jumpForceMultiplier = currentScore > DOG_RAGE_START_SCORE ? 1 + (dogRageLevel * 0.1) : 1;
+                dog.velocityY = DOG_POUNCE_FORCE / 2 * jumpForceMultiplier;
+                dog.pounceReady = false;
+            }
+        } else {
+            dog.prepareAttack = false;
+            dog.attacking = false;
+            // Giảm thời gian hồi chiêu cắn khi điểm cao để tấn công thường xuyên hơn
+            const cooldownReduction = currentScore > DOG_RAGE_START_SCORE ? Math.max(0.5, 1 - (dogRageLevel * 0.1)) : 1;
+            dog.biteCooldown = Math.floor(50 * cooldownReduction);
+        }
+    } else if (dog.biteCooldown > 0) {
+        dog.biteCooldown--;
+        
+        // Ngắt thời gian hồi chiêu khi điểm cao và chó ở trạng thái cuồng nộ (xác suất nhỏ)
+        if (currentScore > DOG_RAGE_START_SCORE && Math.random() < 0.01 * dogRageLevel) {
+            dog.biteCooldown = 0; // Đôi khi bỏ qua thời gian hồi chiêu để tấn công liên tục
+        }
+    }
+    
+    // Make sure dog doesn't go beyond left edge
+    if (dog.x < 0) {
+        dog.x = 0;
+    }
+    
+    // Check if dog is getting close to player (attack mode)
+    const distanceToPlayer = player.x - dog.x - dog.width;
+    
+    // Tính khoảng cách tấn công dựa trên điểm số
+    const effectiveAttackDistance = DOG_ATTACK_DISTANCE + 
+                                    (currentScore > DOG_RAGE_START_SCORE ? dogRageLevel * 5 : 0);
+                                    
+    if (distanceToPlayer < effectiveAttackDistance && !playerNearObstacle) {
+        // Khoảng cách rất gần và người chơi không ở gần vật cản - chuẩn bị tấn công
+        if (!dog.prepareAttack && dog.biteCooldown <= 0 && !dog.jumping) {
+            dog.prepareAttack = true;
+            dog.biteTimer = 30;
+            dog.pounceReady = true;            
+            
+            // Hiệu ứng cuồng nộ cho chó khi điểm cao
+            if (currentScore > DOG_RAGE_START_SCORE && Math.random() < 0.3) {
+                // Thêm hiệu ứng cuồng nộ trực quan
+                showSpeedMessage("Dog Rage!", "rgb(255, 100, 0)");
+            }
+        }
+        
+        // Check if dog has caught the player
+        if (checkCollision(player, dog)) {
+            gameOver = true;
+            document.getElementById('game-over').classList.remove('hidden');
+            
+            // Update high score if needed
+            if (Math.floor(score / 10) > highScore) {
+                highScore = Math.floor(score / 10);
+                document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+                localStorage.setItem('humanRunHighScore', highScore);
+            }
+            
+            cancelAnimationFrame(animationFrame);
+        }
+    }
+    
+    // Update dog jumping behavior
+    updateDogJumping();
+}
+
+// Update obstacles
+const currentTime = Date.now();
+
+// Điều chỉnh tần suất xuất hiện chướng ngại vật theo tốc độ game
+const obstacleInterval = Math.max(500, 2000 - gameSpeed * 50);
+
+if (currentTime - lastObstacleTime > obstacleInterval) {
+    // Add new obstacle
+    const randomType = Math.random();
+    let obstacleType;
+    
+    // Kiểm tra điểm số để quyết định có thể xuất hiện các loại chướng ngại vật đặc biệt hay không
+    const currentScore = Math.floor(score / 10);
+    const canSpawnNative = currentScore >= NATIVE_MIN_SCORE;
+    const canSpawnMine = currentScore >= MINE_MIN_SCORE;
+    const canSpawnGrayBird = currentScore >= GRAY_BIRD_MIN_SCORE;
+    
+    // Biến để kiểm soát có tạo kết hợp chim và mìn hay không
+    let createBirdMineCombination = canSpawnMine && Math.random() < 0.15; // 15% cơ hội tạo kết hợp
+    
+    // Phân bổ tỷ lệ xuất hiện các loại chướng ngại vật
+    if (canSpawnNative && Math.random() < NATIVE_CHANCE) {
+        obstacleType = 'native';
+    } else if (canSpawnMine && !createBirdMineCombination && Math.random() < MINE_CHANCE) {
+        obstacleType = 'mine';
+    } else if (canSpawnGrayBird && Math.random() < GRAY_BIRD_CHANCE) {
+        obstacleType = 'graybird'; // Chim xám có ưu tiên cao hơn các loại chim thường
+    } else if (randomType < 0.5) {
+        obstacleType = 'cactus';
+    } else if (randomType < 0.7 || createBirdMineCombination) {
+        obstacleType = 'bird';
+    } else if (randomType < 0.85) {
+        obstacleType = 'spikepit';
+    } else {
+        obstacleType = 'groundspike';
+    }
+    
+    let height, width, y, sprite;
+    
+    if (obstacleType === 'native') {
+        // Người thổ dân
+        sprite = nativeSprite;
+        width = NATIVE_WIDTH;
+        height = NATIVE_HEIGHT;
+        y = GROUND_Y - height;
+    } else if (obstacleType === 'mine') {
+        // Quả mìn
+        sprite = mineSprite;
+        width = MINE_WIDTH;
+        height = MINE_HEIGHT;
+        y = GROUND_Y - height + 5; // Để quả mìn lún một phần vào cát
+    } else if (obstacleType === 'cactus') {
+        const cactusType = Math.floor(Math.random() * 3);
+        if (cactusType === 0) {
+            sprite = cactusSingleSprite;
+            width = 20;
+            height = 50;
+        } else if (cactusType === 1) {
+            sprite = cactusDoubleSprite;
+            width = 40;
+            height = 60;
+        } else {
+            sprite = cactusTripleSprite;
+            width = 60;
+            height = 70;
+        }
+        
+        y = GROUND_Y - height;
+    } else if (obstacleType === 'bird') {
+        sprite = birdFlyingSprites[0];
+        width = 40;
+        height = 30;
+        // Birds can be at different heights
+        if (Math.random() > 0.5) {
+            y = GROUND_Y - 40 - Math.random() * 60; // Higher flight
+        } else {
+            y = GROUND_Y - PLAYER_HEIGHT + 10; // Low flight (requires ducking)
+        }
+    } else if (obstacleType === 'graybird') {
+        sprite = grayBirdSprites[0];
+        width = GRAY_BIRD_WIDTH;
+        height = GRAY_BIRD_HEIGHT;
+        // Gray birds can be at different heights
+        if (Math.random() > 0.5) {
+            y = GROUND_Y - 40 - Math.random() * 60; // Higher flight
+        } else {
+            y = GROUND_Y - PLAYER_HEIGHT + 10; // Low flight (requires ducking)
+        }
+    } else if (obstacleType === 'spikepit') {
+        // Hố gai nhọn có hai kích thước
+        const spikePitSize = Math.floor(Math.random() * 2);
+        sprite = spikePitSprites[spikePitSize];
+        
+        // Kích thước dựa trên sprite
+        width = spikePitSize === 0 ? 60 : 80;
+        height = 30;
+        
+        // Đặt vị trí hố gai nhọn ngang với mặt đất 
+        y = GROUND_Y - height + 8; // +8 để đặt phần trên của hố gai nhọn ngang với mặt đất
+    } else if (obstacleType === 'groundspike') {
+        // Gai nhọn tam giác từ mặt đất có ba kích thước
+        const groundSpikeSize = Math.floor(Math.random() * 3);
+        sprite = groundSpikeSprites[groundSpikeSize];
+        
+        // Kích thước dựa trên sprite
+        width = 30 + groundSpikeSize * 15; // 30px, 45px, hoặc 60px
+        height = 40;
+        
+        // Đặt vị trí gai nhọn tam giác ngang với mặt đất 
+        y = GROUND_Y - height;
+    }
+    
+    obstacles.push({
+        x: GAME_WIDTH,
+        y: y,
+        width: width,
+        height: height,
+        type: obstacleType,
+        sprite: sprite,
+        jumped: false,
+        reversed: false,
+        canReverse: obstacleType === 'bird' && !hasReverseBird && birdsJumpedOver === 6,
+        reverseX: 0,
+        reverseY: 0,
+        reverseSpeed: gameSpeed * 1.2,
+        // Thông tin bổ sung cho người thổ dân
+        throwingSpear: false, // Trạng thái đang phóng lao
+        spearThrown: false,   // Đã phóng lao hay chưa
+        throwDelay: 20        // Độ trễ trước khi phóng lao (frames)
+    });
+    
+    // Nếu đây là chim và chúng ta cần tạo kết hợp chim-mìn
+    if (obstacleType === 'bird' && createBirdMineCombination) {
+        // Tạo quả mìn ngay bên dưới con chim
+        obstacles.push({
+            x: GAME_WIDTH + Math.random() * 20, // Thêm một chút độ lệch ngẫu nhiên
+            y: GROUND_Y - MINE_HEIGHT + 5, // Đặt quả mìn trên mặt đất
+            width: MINE_WIDTH,
+            height: MINE_HEIGHT,
+            type: 'mine',
+            sprite: mineSprite,
+            jumped: false,
+            reversed: false
+        });
+    }
+    
+    lastObstacleTime = currentTime;
+}
+
+// Update game speed based on score and speed effect
+let effectiveGameSpeed = gameSpeed;
+
+// Apply speed effect if active
+if (speedEffectActive) {
+    effectiveGameSpeed *= speedEffectMultiplier;
+}
+
+// Move obstacles with the effective game speed
+for (let i = 0; i < obstacles.length; i++) {
+    // Nếu là con chim đã quay đầu, di chuyển theo hướng khác
+    if (obstacles[i].reversed) {
+        // Di chuyển chim quay đầu theo hướng ngược lại (đuổi theo người chơi)
+        obstacles[i].x -= obstacles[i].reverseSpeed * -1;
+        
+        // Điều chỉnh độ cao của chim theo chuyển động sine để tạo cảm giác bay lượn
+        obstacles[i].y = obstacles[i].reverseY + Math.sin(Date.now() / 150) * 15;
+        
+        // Kiểm tra va chạm với người chơi (thêm mới)
+        if (checkCollision(player, obstacles[i])) {
+            gameOver = true;
+            document.getElementById('game-over').classList.remove('hidden');
+            
+            // Update high score if needed
+            if (Math.floor(score / 10) > highScore) {
+                highScore = Math.floor(score / 10);
+                document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+                localStorage.setItem('humanRunHighScore', highScore);
+            }
+            
+            cancelAnimationFrame(animationFrame);
+            return; // Kết thúc vòng lặp ngay lập tức
+        }
+        
+        // Nếu chim bay ra khỏi màn hình bên trái, loại bỏ
+        if (obstacles[i].x > GAME_WIDTH + 100) {
+            obstacles.splice(i, 1);
+            i--;
+            continue;
+        }
+    } else {
+        // Di chuyển chướng ngại vật bình thường với tốc độ hiệu quả
+        obstacles[i].x -= effectiveGameSpeed;
+        
+        // Xử lý người thổ dân
+        if (obstacles[i].type === 'native') {
+            // Kiểm tra xem người chơi đã nhảy qua người thổ dân chưa
+            if (!obstacles[i].jumped && 
+                player.x > obstacles[i].x + obstacles[i].width && 
+                player.jumping) {
+                
+                obstacles[i].jumped = true;
+                
+                // Người thổ dân bắt đầu chuẩn bị phóng lao ngay lập tức
+                obstacles[i].throwingSpear = true;
+            }
+            
+            // Nếu đang trong trạng thái phóng lao
+            if (obstacles[i].throwingSpear && !obstacles[i].spearThrown) {
+                obstacles[i].throwDelay--;
+                
+                // Khi hết thời gian trễ, phóng lao
+                if (obstacles[i].throwDelay <= 0) {
+                    // Tạo cây lao mới và đảm bảo nó bay về phía người chơi
+                    spears.push({
+                        x: obstacles[i].x,
+                        y: obstacles[i].y + 25, // Vị trí phóng lao (ngang ngực)
+                        width: SPEAR_WIDTH,
+                        height: SPEAR_HEIGHT,
+                        velocityX: SPEAR_SPEED, // Tốc độ bay của lao (luôn dương để bay về phía phải)
+                        active: true
+                    });
+                    
+                    obstacles[i].spearThrown = true;
+                }
+            }
+        } else if (obstacles[i].type === 'bird') {
+            // Kiểm tra xem người chơi đã nhảy qua chướng ngại vật chưa
+            if (!obstacles[i].jumped && 
+                player.x > obstacles[i].x + obstacles[i].width && 
+                player.jumping && 
+                obstacles[i].type === 'bird') {
+                
+                obstacles[i].jumped = true;
+                birdsJumpedOver++;
+                
+                // Nếu đây là con chim thứ 7 sau khi nhảy qua 6 con chim trước đó
+                if (obstacles[i].canReverse) {
+                    // Lưu lại vị trí và tham chiếu của chim để sử dụng trong setTimeout
+                    const birdRef = obstacles[i];
+                    
+                    // Đánh dấu con chim này sẽ quay đầu sau một khoảng thời gian ngắn
+                    setTimeout(() => {
+                        // Tìm lại chim trong mảng obstacles dựa trên tham chiếu thay vì chỉ số
+                        const currentIndex = obstacles.findIndex(obs => obs === birdRef);
+                        
+                        // Kiểm tra nếu chim vẫn còn tồn tại trong mảng obstacles
+                        if (currentIndex !== -1) {
+                            // Đánh dấu chim quay đầu và lưu vị trí hiện tại để bay ngược lại
+                            obstacles[currentIndex].reversed = true;
+                            obstacles[currentIndex].reverseX = obstacles[currentIndex].x;
+                            obstacles[currentIndex].reverseY = obstacles[currentIndex].y;
+                            obstacles[currentIndex].reverseSpeed = gameSpeed * 1.2;
+                            hasReverseBird = true;
+                        }
+                    }, 500); // Thời gian trì hoãn trước khi quay đầu
+                }
+            }
+        } else if (obstacles[i].type === 'graybird') {
+            // Kiểm tra xem người chơi đã nhảy qua chim xám chưa
+            if (!obstacles[i].jumped && 
+                player.x > obstacles[i].x + obstacles[i].width && 
+                player.jumping) {
+                
+                obstacles[i].jumped = true;
+                
+                // Lưu lại vị trí và tham chiếu của chim xám để sử dụng trong setTimeout
+                const birdRef = obstacles[i];
+                
+                // Đánh dấu con chim xám sẽ quay đầu sau 300ms và lao về phía người chơi
+                setTimeout(() => {
+                    // Tìm lại chim xám trong mảng obstacles dựa trên tham chiếu
+                    const currentIndex = obstacles.findIndex(obs => obs === birdRef);
+                    
+                    // Kiểm tra nếu chim xám vẫn còn tồn tại trong mảng obstacles
+                    if (currentIndex !== -1) {
+                        // Đánh dấu chim xám quay đầu và lưu vị trí hiện tại để bay ngược lại
+                        obstacles[currentIndex].reversed = true;
+                        obstacles[currentIndex].reverseX = obstacles[currentIndex].x;
+                        obstacles[currentIndex].reverseY = obstacles[currentIndex].y;
+                        obstacles[currentIndex].reverseSpeed = GRAY_BIRD_CHASE_SPEED * 1.7; // Tăng tốc độ chim xám khi đuổi theo
+                    }
+                }, 300); // Chờ đúng 300ms trước khi quay đầu
+            }
+        }
+        
+        // Check for collision
+        if (checkCollision(player, obstacles[i])) {
+            // Xử lý đặc biệt cho quả mìn: tạo hiệu ứng nổ trước khi kết thúc trò chơi
+            if (obstacles[i].type === 'mine') {
+                // Lưu vị trí chính xác của quả mìn để vẽ hiệu ứng nổ
+                const mineX = obstacles[i].x + obstacles[i].width / 2;
+                const mineY = obstacles[i].y + obstacles[i].height / 2;
+                
+                // Tạo biến để theo dõi thời gian hiển thị hiệu ứng nổ
+                let explosionTimer = EXPLOSION_DURATION;
+                
+                // Ngưng chạy ngay lập tức - không văng người chơi lên
+                gameOver = true; // Đánh dấu game kết thúc ngay lập tức
+                
+                // Loại bỏ quả mìn
+                obstacles.splice(i, 1);
+                i--;
+                
+                // Phát hiệu ứng nổ ngay lập tức
+                createExplosion(mineX, mineY);
+                
+                // Bắt đầu hoạt ảnh nổ liên tục
+                const explosionInterval = setInterval(() => {
+                    // Tạo hiệu ứng nổ với vị trí ngẫu nhiên xung quanh tâm nổ ban đầu để tạo hiệu ứng lan rộng
+                    const offsetX = (Math.random() * 10) - 5;
+                    const offsetY = (Math.random() * 10) - 5;
+                    createExplosion(mineX + offsetX, mineY + offsetY);
+                    
+                    // Giảm timer
+                    explosionTimer--;
+                    
+                    // Dừng hiệu ứng nổ khi đạt thời gian tối đa
+                    if (explosionTimer <= 0) {
+                        clearInterval(explosionInterval);
+                        
+                        // Hiển thị thông báo Game Over sau khi hiệu ứng nổ kết thúc
+                        document.getElementById('game-over').classList.remove('hidden');
+                        document.getElementById('game-over').querySelector('h2').textContent = 'Game Over';
+                        
+                        // Update high score if needed
+                        if (Math.floor(score / 10) > highScore) {
+                            highScore = Math.floor(score / 10);
+                            document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+                            localStorage.setItem('humanRunHighScore', highScore);
+                        }
+                        
+                        cancelAnimationFrame(animationFrame);
+                    }
+                }, 50); // Tạo hiệu ứng nổ liên tục mỗi 50ms
+                
+                continue;
+            } else {
+                gameOver = true;
+                document.getElementById('game-over').classList.remove('hidden');
+                
+                // Update high score if needed
+                if (Math.floor(score / 10) > highScore) {
+                    highScore = Math.floor(score / 10);
+                    document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+                    localStorage.setItem('humanRunHighScore', highScore);
+                }
+                
+                cancelAnimationFrame(animationFrame);
+            }
+        }
+        
+        // Remove obstacles that have gone off-screen
+        if (obstacles[i].x + obstacles[i].width < 0) {
+            obstacles.splice(i, 1);
+            i--;
+        }
+    }
+}
+
+// Update spears
+for (let i = 0; i < spears.length; i++) {
+    // Di chuyển cây lao
+    spears[i].x += spears[i].velocityX;
+    
+    // Kiểm tra va chạm với người chơi
+    if (spears[i].active && checkCollisionWithSpear(player, spears[i])) {
+        gameOver = true;
+        document.getElementById('game-over').classList.remove('hidden');
+        document.getElementById('game-over').querySelector('h2').textContent = 'Game Over';
+        
+        // Update high score if needed
+        if (Math.floor(score / 10) > highScore) {
+            highScore = Math.floor(score / 10);
+            document.getElementById('high-score').textContent = `High Score: ${highScore}`;
+            localStorage.setItem('humanRunHighScore', highScore);
+        }
+        
+        cancelAnimationFrame(animationFrame);
+    }
+    
+    // Loại bỏ cây lao khi ra khỏi màn hình
+    if (spears[i].x > GAME_WIDTH) {
+        spears.splice(i, 1);
+        i--;
+    }
+}
+
+// Update background items (mountains and stones)
+for (let i = 0; i < backgroundItems.length; i++) {
+    backgroundItems[i].x -= backgroundItems[i].speed * gameSpeed;
+    
+    // Reset background items that have gone off-screen
+    if (backgroundItems[i].x + backgroundItems[i].width < 0) {
+        if (backgroundItems[i].type === 'mountain') {
+            backgroundItems[i].x = GAME_WIDTH;
+        } else {
+            backgroundItems[i].x = GAME_WIDTH + Math.random() * 100;
+            backgroundItems[i].y = GROUND_Y - Math.random() * 5;
+        }
+    }
+}
+
+// Update player animation
+frameCounter++;
+if (frameCounter >= 5) { // Change frame every 5 game loops
+    currentPlayerFrame = (currentPlayerFrame + 1) % PLAYER_FRAMES;
+    frameCounter = 0;
+}
+
+// Update bird animation
+birdFrameCounter++;
+if (birdFrameCounter >= 10) { // Change bird frame every 10 game loops
+    currentBirdFrame = (currentBirdFrame + 1) % 2;
+    birdFrameCounter = 0;
+}
+
+// Update dog animation with variable timing based on speed
+dogFrameCounter++;
+const dogFrameSpeed = dog.attacking ? 3 : Math.max(3, 6 - dog.speed / 2); // Chân chó chạy nhanh hơn khi tốc độ cao
+if (dogFrameCounter >= dogFrameSpeed) {
+    currentDogFrame = (currentDogFrame + 1) % 3;
+    dogFrameCounter = 0;
+}
+
+// Update weather system
+updateWeather();
+
+// Update earthquake system
+updateEarthquake();
+
+// Update speed effect system
+updateSpeedEffect();
+}
+
+// Draw everything
+function draw() {
+    // Clear the canvas
+    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    
+    // Draw background (sky)
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, GAME_WIDTH, GROUND_Y);
+    
+    // Hiệu ứng chớp
+    if (lightningFlash || lightningStrike) {
+        // Tạo hiệu ứng lóe sáng trên toàn màn hình
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+    
+    // Draw background mountains
+    for (const item of backgroundItems) {
+        if (item.type === 'mountain') {
+            ctx.drawImage(mountainSprite, item.x, item.y, item.width, item.height);
+        }
+    }
+    
+    // Draw the ground
+    ctx.save();
+
+    // Điều chỉnh màu đất sang màu vàng nhạt giống cát sa mạc
+    ctx.fillStyle = '#E6C88C'; // Màu vàng nhạt chính cho cát sa mạc
+    ctx.fillRect(0, GROUND_Y, GAME_WIDTH, GROUND_HEIGHT);
+
+    // Thêm các chi tiết để tạo hiệu ứng cát sa mạc
+    const tileSize = 50;
+    for (let x = 0; x < GAME_WIDTH; x += tileSize) {
+        // Thêm các chi tiết sáng hơn (cát sáng)
+        ctx.fillStyle = '#F2DCB1'; // Màu cát sáng hơn
+        for (let i = 0; i < 5; i++) {
+            const smallX = x + Math.random() * tileSize;
+            const smallY = GROUND_Y + Math.random() * 5;
+            const smallWidth = 1 + Math.random() * 2;
+            const smallHeight = 1 + Math.random() * 2;
+            ctx.fillRect(smallX, smallY, smallWidth, smallHeight);
+        }
+        
+        // Thêm các chi tiết tối hơn ở phần dưới (bóng của cát)
+        ctx.fillStyle = '#C8AA74'; // Màu cát tối hơn
+        for (let i = 0; i < 3; i++) {
+            const smallX = x + Math.random() * tileSize;
+            const smallY = GROUND_Y + GROUND_HEIGHT - 5 + Math.random() * 3;
+            const smallWidth = 2 + Math.random() * 3;
+            const smallHeight = 1 + Math.random() * 3;
+            ctx.fillRect(smallX, smallY, smallWidth, smallHeight);
+        }
+        
+        // Thêm vài hạt đá nhỏ hoặc tinh thể muối trên sa mạc
+        ctx.fillStyle = '#FFFFFF'; // Màu trắng nhạt cho tinh thể muối
+        if (Math.random() > 0.8) {
+            const smallX = x + Math.random() * tileSize;
+            const smallY = GROUND_Y + 5 + Math.random() * 10;
+            ctx.fillRect(smallX, smallY, 1, 1);
+        }
+    }
+
+    ctx.restore();
+    
+    // Draw small stones
+    ctx.fillStyle = '#777';
+    for (const item of backgroundItems) {
+        if (item.type === 'stone') {
+            ctx.fillRect(item.x, item.y, item.width, item.height);
+        }
+    }
+    
+    // Vẽ hiệu ứng thời tiết mưa
+    if (isRaining) {
+        // Sử dụng pattern mưa
+        const rainCtx = document.createElement('canvas').getContext('2d');
+        rainCtx.canvas.width = 100;
+        rainCtx.canvas.height = 100;
+        
+        // Tạo pattern từ hình ảnh rain_pattern
+        const pattern = rainCtx.createPattern(rainPattern, 'repeat');
+        ctx.save();
+        
+        // Di chuyển pattern để tạo hiệu ứng mưa rơi
+        ctx.translate(-frameCounter % 100, frameCounter % 100);
+        ctx.fillStyle = pattern;
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(-100, -100, GAME_WIDTH + 200, GAME_HEIGHT + 200);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+        
+        // Làm tối bầu trời khi mưa
+        ctx.fillStyle = 'rgba(50, 70, 100, 0.2)';
+        ctx.fillRect(0, 0, GAME_WIDTH, GROUND_Y);
+    }
+    
+    // Vẽ đám mây đen cảnh báo trên đầu người chơi trước khi sét đánh
+    if (darkCloudWarning) {
+        // Vẽ đám mây đen cao hơn trên bầu trời
+        ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+        ctx.beginPath();
+        
+        // Đặt vị trí đám mây ngang với người chơi nhưng cao hơn nhiều
+        const cloudX = player.x + player.width / 2 - 25;
+        const cloudY = 50; // Đặt ở vị trí cao hơn trên màn hình (thay vì player.y - 45)
+        
+        // Vẽ đám mây lớn hơn với nhiều hình tròn chồng lên nhau
+        ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2); // Phần giữa - lớn hơn
+        ctx.arc(cloudX + 20, cloudY - 5, 20, 0, Math.PI * 2); // Phần phải
+        ctx.arc(cloudX - 20, cloudY - 5, 20, 0, Math.PI * 2); // Phần trái
+        ctx.arc(cloudX, cloudY - 15, 15, 0, Math.PI * 2); // Phần trên
+        ctx.fill();
+        
+        // Thêm hiệu ứng ánh sáng nhấp nháy trong đám mây mạnh hơn
+        if (Math.random() > 0.5) {
+            ctx.fillStyle = 'rgba(255, 255, 150, 0.5)';
+            ctx.beginPath();
+            ctx.arc(cloudX + (Math.random() * 25 - 12), cloudY, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Thêm hiệu ứng tia sét nhỏ từ đám mây xuống - chỉ hiển thị thỉnh thoảng
+        if (Math.random() > 0.85) {
+            ctx.strokeStyle = 'rgba(255, 255, 150, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const startX = cloudX + (Math.random() * 30 - 15);
+            const startY = cloudY + 20;
+            
+            // Vẽ tia sét nhỏ dạng zigzag từ đám mây xuống một đoạn
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX + (Math.random() * 10 - 5), startY + 15);
+            ctx.lineTo(startX + (Math.random() * 15 - 7), startY + 30);
+            ctx.stroke();
+        }
+    }
+    
+    // Vẽ tia sét đánh khi người chơi bị trúng sét
+    if (lightningStrike) {
+        // Chọn frame hiệu ứng sét dựa trên lightningTimer
+        const lightningFrame = Math.min(2, Math.floor(lightningTimer / 10));
+        ctx.drawImage(lightningSprites[lightningFrame], lightningX, lightningY, 80, 200);
+        
+        // Thêm hiệu ứng sáng xung quanh người chơi khi bị sét đánh
+        ctx.fillStyle = 'rgba(255, 255, 150, 0.3)';
+        ctx.beginPath();
+        ctx.arc(player.x + player.width / 2, player.y + player.height / 2, 30, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Draw the dog (if active) with running dust effect
+    if (dog.active && dog.x >= 0) {
+        // Vẽ hiệu ứng bụi khi chạy
+        if (!dog.jumping && dog.speed > DOG_BASE_SPEED) {
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+            for (let i = 0; i < 3; i++) {
+                const dustSize = Math.random() * 5 + 2;
+                ctx.beginPath();
+                // Chỉ vẽ bụi ở phía sau chó (ở phần đuôi) để không hiển thị bụi trước mũi
+                ctx.arc(dog.x - 20 - i * 5, dog.y + dog.height - 2, dustSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        if (dog.attacking) {
+            // Vẽ chú chó tấn công - sử dụng sprite chạy thay vì sprite tấn công
+            ctx.drawImage(dogRunningSprites[currentDogFrame], dog.x, dog.y, dog.width,dog.height);
+            
+            // Thêm hiệu ứng chân chạy khi đangtấn công
+            if (!dog.jumping) {
+                // Vẽ bóng chân chạy với chuyển động rõ ràng theo frame hiện tại
+                const legPhase = currentDogFrame;
+                
+                // Màu bóng chân chạy
+                ctx.fillStyle = 'rgba(90, 90, 90, 0.4)'; // Tăng độ đậm để dễ nhìn hơn
+                
+                // Vị trí chân trái (sau)
+                const leftX = dog.x + dog.width * 0.3 + (legPhase === 0 ? -3 : legPhase === 1 ? 0: 3);
+                const leftY = dog.y + dog.height - (legPhase === 1 ? 4 : 2);
+                
+                // Vị trí chân phải (trước)
+                const rightX = dog.x + dog.width * 0.5 + (legPhase === 0 ? 3 : legPhase === 1 ? 0 : -3);
+                const rightY = dog.y + dog.height - (legPhase === 2 ? 4 : 2);
+                
+                // Vẽ chân sau
+                ctx.beginPath();
+                ctx.ellipse(leftX, leftY, 4, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Vẽ chân trước
+                ctx.beginPath();
+                ctx.ellipse(rightX, rightY, 4, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Thêm đường di chuyển của chân để tạo hiệu ứng chuyển động
+                if (legPhase === 1) {
+                    ctx.strokeStyle = 'rgba(90, 90, 90, 0.3)';
+                    ctx.lineWidth = 1.5;
+                    
+                    // Vẽ đường di chuyển cho chân sau
+                    ctx.beginPath();
+                    ctx.moveTo(leftX - 3, leftY + 1);
+                    ctx.lineTo(leftX, leftY);
+                    ctx.stroke();
+                    
+                    // Vẽ đường di chuyển cho chân trước
+                    ctx.beginPath();
+                    ctx.moveTo(rightX + 3, rightY + 1);
+                    ctx.lineTo(rightX, rightY);
+                    ctx.stroke();
+                }
+            }
+            
+            // Vẽ hiệu ứng sủa/cắn
+            if (dog.biteTimer < 15) {
+                // Chỉ vẽ hiệu ứng sủa ở phía trước miệng chó
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(dog.x + dog.width + 3, dog.y + dog.height/2, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else if (dog.jumping) {
+            // Draw jumping dog
+            ctx.drawImage(dogJumpSprite, dog.x, dog.y, dog.width, dog.height);
+            
+            // Vẽ hiệu ứng nhảy (chuyển động trong không khí)
+            if (dog.velocityY < 0) { // Đang đi lên
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.2)';
+                ctx.beginPath();
+                ctx.moveTo(dog.x + 5, dog.y + dog.height);
+                ctx.lineTo(dog.x + 10, dog.y + dog.height + 10);
+                ctx.lineTo(dog.x, dog.y + dog.height + 10);
+                ctx.fill();
+            }
+        } else {
+            // Draw running dog with animation
+            ctx.drawImage(dogRunningSprites[currentDogFrame], dog.x, dog.y, dog.width, dog.height);
+        }
+        
+        // Vẽ hiệu ứng chân chó trong thời gian hồi chiêu (sau khi tấn công)
+        if (dog.biteCooldown > 0 && !dog.attacking && !dog.jumping) {
+            // Vẽ hiệu ứng chân chạy với dao động nhanh hơn để thể hiện sự căng thẳng sau khi tấn công
+            const cooldownLegPhase = Math.floor((dog.biteCooldown % 15) / 5); // Tạo chu kỳ nhanh hơn 0,1,2
+            
+            // Màu bóng chân cho giai đoạn hồi chiêu
+            ctx.fillStyle = 'rgba(90, 90, 90, 0.35)';
+            
+            // Dao động nhanh hơn cho chân sau khi rút lui
+            const cLeftX = dog.x + dog.width * 0.25 + (cooldownLegPhase === 0 ? -2 : cooldownLegPhase === 1 ? 0 : 2);
+            const cLeftY = dog.y + dog.height - (cooldownLegPhase === 1 ? 3 : 1);
+            
+            // Vị trí chân phải (trước)
+            const cRightX = dog.x + dog.width * 0.45 + (cooldownLegPhase === 0 ? 2 : cooldownLegPhase === 1 ? 0 : -2);
+            const cRightY = dog.y + dog.height - (cooldownLegPhase === 2 ? 3 : 1);
+            
+            // Vẽ chân sau
+            ctx.beginPath();
+            ctx.ellipse(cLeftX, cLeftY, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Vẽ chân trước
+            ctx.beginPath();
+            ctx.ellipse(cRightX, cRightY, 3, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    // Draw the player
+    if (playerElectrocuted) {
+        // Vẽ người chơi bị sét đánh nằm xuống
+        ctx.save();
+        
+        // Xoay người chơi 90 độ để nằm xuống
+        ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+        ctx.rotate(Math.PI / 2); // Xoay 90 độ
+        
+        // Vẽ người chơi bị sét đánh (dùng sprite đang nhảy nhưng xoay ngang)
+        ctx.drawImage(playerJumpingSprite, 
+                     -player.width / 2, -player.height / 2, 
+                     player.width, player.height);
+        
+        // Hiệu ứng khói từ cơ thể
+        if (Math.random() > 0.3) {
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
+            ctx.beginPath();
+            ctx.arc(0, -player.height / 3, Math.random() * 5 + 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+        
+        // Không cần cập nhật bộ đếm thời gian hiệu ứng bị điện giật
+        // playerElectrocutionTimer--;
+        // if (playerElectrocutionTimer <= 0) {
+        //     // Kết thúc hiệu ứng nằm xuống nhưng giữ trạng thái gameOver
+        //     playerElectrocuted = false;
+        // }
+    } else if (player.ducking) {
+        // Ducking player
+        ctx.drawImage(playerDuckingSprite, player.x, player.y, player.width, player.height);
+    } else if (player.jumping) {
+        if (player.starJumping) {
+            // Star jump pose at the apex of the jump
+            ctx.drawImage(playerStarJumpSprite, player.x - 10, player.y - 5, player.width, player.height + 10);
+        } else {
+            // Regular jumping player
+            ctx.drawImage(playerJumpingSprite, player.x, player.y, player.width, player.height);
+        }
+    } else {
+        // Running player - use the current frame from the running animation
+        ctx.drawImage(playerRunningSprites[currentPlayerFrame], player.x, player.y, player.width, player.height);
+    }
+    
+    // Draw obstacles
+    for (const obstacle of obstacles) {
+        if (obstacle.type === 'cactus') {
+            ctx.drawImage(obstacle.sprite,obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        } else if (obstacle.reversed) {
+            // Vẽ chim quay đầu - lật ngược hình ảnh
+            ctx.save();
+            ctx.translate(obstacle.x + obstacle.width, obstacle.y);
+            ctx.scale(-1, 1);
+            
+            // Xác định sprite dựa vào loại chim
+            const birdSprite = obstacle.type === 'graybird' ? grayBirdSprites[currentBirdFrame] : birdFlyingSprites[currentBirdFrame];
+            ctx.drawImage(birdSprite, 0, 0, obstacle.width, obstacle.height);
+            ctx.restore();
+            
+            // Thêm hiệu ứng "tức giận" khi chim đuổi theo người chơi
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.3)';
+            ctx.beginPath();
+            ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2 - 5, 3, 0, Math.PI *2);
+            ctx.fill();
+            
+            // Hiệu ứng chuyển động nhanh
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(obstacle.x + obstacle.width + i * 5, obstacle.y + obstacle.height / 2 - 3);
+                ctx.lineTo(obstacle.x + obstacle.width + i * 5 + 5, obstacle.y + obstacle.height / 2 - 3);
+                ctx.stroke();
+            }
+        } else if (obstacle.type === 'spikepit') {
+            ctx.drawImage(obstacle.sprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        } else if (obstacle.type === 'groundspike') {
+            ctx.drawImage(obstacle.sprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            
+            // Thêm hiệu ứng ánh sáng cho gai nhọn
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(obstacle.x + obstacle.width / 4, obstacle.y + 10);
+            ctx.lineTo(obstacle.x + obstacle.width / 4 + 2, obstacle.y + 20);
+            ctx.lineTo(obstacle.x + obstacle.width / 4 - 2, obstacle.y + 20);
+            ctx.fill();
+        } else if (obstacle.type === 'mine') {
+            // Vẽ quả mìn
+            ctx.drawImage(obstacle.sprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            
+            // Thêm hiệu ứng nhấp nháy thỉnh thoảng cho ngòi nổ
+            if (Math.random() > 0.9) {
+                ctx.fillStyle = 'rgba(255, 200, 100, 0.6)';
+                ctx.beginPath();
+                ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + 5, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else if (obstacle.type === 'native') {
+            // Vẽ người thổ dân
+            if (obstacle.throwingSpear && !obstacle.spearThrown) {
+                // Khi đang chuẩn bị phóng lao, vẽ người thổ dân đã quay lại
+                ctx.save();
+                ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
+                ctx.scale(-1, 1); // Chỉ đảo ngược theo chiều ngang, không đảo ngược theo chiều dọc
+                ctx.drawImage(obstacle.sprite, -obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+                ctx.restore();
+                
+                // Vẽ hiệu ứng chuẩn bị phóng lao
+                if (obstacle.throwDelay < 10) {
+                    ctx.fillStyle = 'rgba(255, 50, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + 25, 10 - obstacle.throwDelay, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else {
+                // Vẽ người thổ dân ở trạng thái bình thường
+                ctx.drawImage(obstacle.sprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+        } else if (obstacle.type === 'graybird') {
+            // Draw a gray bird using the current frame from the flying animation
+            ctx.drawImage(grayBirdSprites[currentBirdFrame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            
+            // Add angry red eyes effect for gray bird
+            if (Math.random() > 0.7) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(obstacle.x + obstacle.width/2 + 15, obstacle.y + obstacle.height/2 - 4, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else {
+            // Draw a regular bird using the current frame from the flying animation
+            ctx.drawImage(birdFlyingSprites[currentBirdFrame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        }
+    }
+    
+    // Draw spears
+    for (const spear of spears) {
+        // Vẽ cây lao với hiệu ứng chuyển động
+        ctx.save();
+        ctx.translate(spear.x + spear.width / 2, spear.y + spear.height / 2);
+        // Thêm hiệu ứng xoay nhẹ khi lao bay
+        const rotationAngle = (spear.x % 10) * 0.01;
+        ctx.rotate(rotationAngle);
+        ctx.drawImage(spearSprite, -spear.width / 2, -spear.height / 2, spear.width, spear.height);
+        
+        // Vẽ hiệu ứng chuyển động khi cây lao bay
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i <= 3; i++) {
+            ctx.beginPath();
+            ctx.moveTo(-spear.width / 2 - i * 8, 0);
+            ctx.lineTo(-spear.width / 2 - i * 8 - 8, 0);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
+// Check for collision between two rectangles (AABB)
+function checkCollision(rect1, rect2) {
+    // Điều chỉnh vùng va chạm để phù hợp hơn với kích thước thực tế
+    // để cung cấp cảm giác va chạm chính xác hơn
+    let margin1X = 6; // Margin theo chiều ngang cho người chơi
+    let margin1Y = 10; // Margin theo chiều dọc cho người chơi
+    let margin2X = 4; // Margin mặc định theo chiều ngang cho vật cản
+    let margin2Y = 5; // Margin mặc định theo chiều dọc cho vật cản
+    
+    // Điều chỉnh vùng va chạm dựa trên loại chướng ngại vật
+    if (rect2.type=== 'cactus') {
+        margin2X = 2; // Xương rồng có vùng va chạmnhỏ hơn ở chiều ngang
+    } else if (rect2.type === 'bird') {
+        margin2X = 8; // Chim có vùng va chạm lớn hơn (do cánh di chuyển)
+        margin2Y = 8;
+    } else if (rect2.type === 'graybird' && rect2.reversed) {
+        margin2X = 5; // Chim xám khi đang lao về có vùng va chạm chính xác hơn
+        margin2Y = 5;
+    } else if (rect2.type === 'graybird') {
+        margin2X = 8; // Chim xám bình thường có vùng va chạm tương tự chim thường
+        margin2Y = 8;
+    } else if (rect2.type === 'spikepit') {
+        margin2Y = 15; // Gai nhọn chủ yếu nguy hiểm ở phần trên
+        margin2X = 5;
+    } else if (rect2.type === 'groundspike') {
+        margin2Y = 10; // Gai nhọn từ mặt đất chủ yếu nguy hiểm ở phần đỉnh
+        margin2X = 3;
+    } else if (rect2.type === 'mine') {
+        margin2X = 3; // Quả mìn có vùng va chạm nhỏ hơn một chút
+        margin2Y = 3; // Đảm bảo va chạm được phát hiện chính xác
+    }
+    
+    // Điều chỉnh vùng va chạm khi người chơi đang nhảy hoặc ngồi
+    if (rect1.jumping) {
+        margin1Y = 8; // Nhảy có vùng va chạm nhỏ hơn (co người lại)
+    } else if (rect1.ducking) {
+        margin1X = 5; // Ngồi có vùng va chạm hẹp hơn
+    }
+    
+    // Kiểm tra va chạm với vùng va chạm đã điều chỉnh
+    return rect1.x + margin1X < rect2.x + rect2.width - margin2X &&
+           rect1.x + rect1.width - margin1X > rect2.x + margin2X &&
+           rect1.y + margin1Y < rect2.y + rect2.height - margin2Y &&
+           rect1.y + rect1.height - margin1Y > rect2.y + margin2Y;
+}
+
+// Check for collision between player and spear
+function checkCollisionWithSpear(player, spear) {
+    // Tạo hộp va chạm nhỏ hơn một chút so với kích thước thực của các đối tượng
+    // để cung cấp cảm giác va chạm chính xác hơn
+    const playerMargin = 10;
+    const spearMargin = 3;
+    
+    // Kiểm tra va chạm với vùng va chạm đã điều chỉnh
+    return player.x + playerMargin < spear.x + spear.width - spearMargin &&
+           player.x + player.width - playerMargin > spear.x + spearMargin &&
+           player.y + playerMargin < spear.y + spear.height - spearMargin &&
+           player.y + player.height - playerMargin > spear.y + spearMargin;
+}
+
+// Reset game function
+function resetGame() {
+    player.y = PLAYER_Y + 2; // Adjusted down by 2 pixels to ensure feet touch ground
+    player.x = PLAYER_START_X;
+    player.targetX = PLAYER_START_X;
+    player.velocityY = 0;
+    playerjumping = false;
+    player.jumpPeak = false;
+    player.starJumping = false;
+    player.ducking = false;
+    player.height = PLAYER_HEIGHT;
+    player.width = PLAYER_WIDTH;
+    playerElectrocuted = false;
+    playerElectrocutionTimer= 0;
+    
+    // Reset dog
+    dog.x = DOG_START_X;
+    dog.y = DOG_Y + 3; // Adjusted down by 3 pixels to ensure paws touch ground
+    dog.speed = DOG_BASE_SPEED;
+    dog.attacking = false;
+    dog.active = false;
+    dog.barkTimer = 0;
+    dog.lastBarkTime = 0;
+    dogApproachMode = false;
+    dog.jumping = false;
+    dog.velocityY = 0;
+    dog.jumpCooldown = 0;
+    dog.obstacleAwareness = 800;
+    dog.behaviorTimer = 0;
+    dog.behaviorState = 'steady';
+    dog.lastBehaviorChange = 0;
+    dog.prepareAttack = false;
+    dog.biteTimer = 0;
+    dog.biteCooldown = 0;
+    dog.jumpStrength = 1.0;
+    dog.nextObstacleType = null;
+    dog.pounceReady = false;
+
+    // Reset bird tracking
+    birdsJumpedOver = 0;
+    hasReverseBird = false;
+
+    // Reset weather
+    isRaining = false;
+    lightningFlash = false;
+    lightningStrike = false;
+    weatherTimer = 0;
+    jumpCount = 0;
+    rainCooldownTimer = RAIN_COOLDOWN; // Bắt đầu thời gian nghỉ giữa các đợt mưa
+    darkCloudWarning = false; // Reset đám mây đen cảnh báo
+    darkCloudTimer = 0; // Reset thời gian hiển thị đám mây đen
+
+    // Reset player blaststate
+    playerBlasted = false;
+
+    obstacles = [];
+    spears = [];
+    gameSpeed = INITIAL_GAME_SPEED;
+    speedMultiplier = 1.0;
+    lastSpeedIncreaseScore = 0;
+    score = 0;
+    gameOver = false; 
+
+    document.getElementById('game-over').classList.add('hidden');
+    document.getElementById('score').textContent = `Score: 0`;
+    document.getElementById('game-speed').textContent = `Speed: 1.0x`;
+
+
+    // Reset hiệu ứng rung màn hình
+    canvas.style.transform = 'translate(0, 0)';
+
+    lastObstacleTime = Date.now();
+    gameLoop();
+}
+
+// Update dog jumping logic
+function updateDogJumping() {
+    // Xử lý nhảy của chú chó
+    if (dog.jumping) {
+        dog.velocityY += GRAVITY;
+        dog.y += dog.velocityY;
+
+        // Kiểm tra chú chó đã hạ cánh chưa
+        if (dog.y >= groundY - dog.height) {
+            dog.y = groundY - dog.height;
+            dog.jumping = false;
+            dog.velocityY = 0;
+        }
+    } else if (dog.jumpCooldown > 0) {
+        // Giảm thời gian hồi chiêu nhảy
+        dog.jumpCooldown--;
+
+        // Đảm bảo chú chó luôn ở trên mặt đất khi không nhảy
+        if (!dog.jumping) {
+            dog.y = groundY - dog.height;
+        }
+    } else {
+        // Đảm bảo chú chó luôn ở trên mặt đất khi không nhảy
+        dog.y = groundY - dog.height;
+
+        // Phân tích các chướng ngại vật phía trước để quyết định nhảy
+        let needToJump = false;
+        let obstacleToJump = null;
+        let minDistance = DOG_JUMP_DETECT_DISTANCE;
+
+        // Tìm chướng ngại vật gần nhất phía trước
+        for (const obstacle of obstacles) {
+            // Tính khoảng cách từ chó đến chướng ngại vật
+            const distanceToObstacle = obstacle.x - (dog.x + dog.width);
+
+            // Chỉ xem xét các chướng ngại vật phía trước trong phạm vi phát hiện
+            if (distanceToObstacle > 0 && distanceToObstacle < minDistance) {
+                // Xác định xem có cần nhảy qua chướng ngại vật này không
+                let shouldJumpThisObstacle = false;
+
+                if (obstacle.type === 'cactus' || obstacle.type === 'groundspike') {
+                    // Luôn nhảy qua xương rồng và gai nhọn tam giác
+                    shouldJumpThisObstacle = true;
+                } else if (obstacle.type === 'spikepit') {
+                    // Luôn nhảy qua hố gai
+                    shouldJumpThisObstacle = true;
+                }
+                // Bỏ điều kiện nhảy qua chim - chú chó không cần nhảy qua chim
+
+                // Nếu cần nhảy và chướng ngại vật này gần hơn
+                if (shouldJumpThisObstacle && distanceToObstacle < minDistance) {
+                    minDistance = distanceToObstacle;
+                    needToJump = true;
+                    obstacleToJump = obstacle;
+                }
+            }
+        }
+
+        // Quyết định nhảy dựa trên loại chướng ngại vật
+        if (needToJump && obstacleToJump) {
+            // Điều chỉnh lực nhảy dựa trên loại chướng ngại vật
+            let jumpMultiplier = 1.0;
+
+            // Thêm phân tích cao cấp về loại chướng ngại vật và hoàn cảnh
+            // Phân tích tình huống phức tạp hơn để quyết định
+            const gameplayContext = {
+                gameSpeed: gameSpeed,
+                playerDistance: player.x - dog.x,
+                obstacleSequence: false,
+                nextObstacleClose: false
+            };
+
+            // Kiểm tra xem có một chuỗi chướng ngại vật phía trước không
+            let nextObstacleIndex = -1;
+            for (let i = 0; i < obstacles.length; i++) {
+                if (obstacles[i] === obstacleToJump) {
+                    nextObstacleIndex = i + 1;
+                    break;
+                }
+            }
+
+            // Xác định xem có chướng ngại vật khác ngay sau chướng ngại vật này không
+            if (nextObstacleIndex >= 0 && nextObstacleIndex < obstacles.length) {
+                const nextObstacle = obstacles[nextObstacleIndex];
+                const distanceBetweenObstacles = nextObstacle.x - (obstacleToJump.x + obstacleToJump.width);
+                
+                if (distanceBetweenObstacles < 150) {
+                    gameplayContext.obstacleSequence = true;
+                    gameplayContext.nextObstacleClose = distanceBetweenObstacles < 80;
+                }
+            }
+
+            if (obstacleToJump.type === 'spikepit') {
+                // Nhảy mạnh hơn cho hố gai rộng
+                jumpMultiplier = 1.2;
+                if (obstacleToJump.width > 70) {
+                    jumpMultiplier = 1.4;
+                }
+                
+                // Nếu tốc độ game cao, tăng thêm lực nhảy
+                if (gameSpeed > 10) {
+                    jumpMultiplier += 0.1;
+                }
+                
+                // Nếu có chuỗi chướng ngại vật, tăng lực nhảy để vượt qua cả hai
+                if (gameplayContext.obstacleSequence && gameplayContext.nextObstacleClose) {
+                    jumpMultiplier += 0.2;
+                }
+            } else if (obstacleToJump.type === 'cactus') {
+                // Điều chỉnh lực nhảy dựa trên chiều cao của xương rồng
+                jumpMultiplier = Math.min(1.0 + (obstacleToJump.height / 100), 1.3);
+                
+                // Nếu xương rồng rộng, tăng lực nhảy
+                if (obstacleToJump.width > 30) {
+                    jumpMultiplier += 0.05;
+                }
+                
+                // Nếu có chuỗi xương rồng, tăng lực nhảy theo cách khác
+                if (gameplayContext.obstacleSequence) {
+                    if (gameplayContext.nextObstacleClose) {
+                        jumpMultiplier += 0.15; // Tăng nhiều hơn cho các chướng ngại vật rất gần nhau
+                    } else {
+                        jumpMultiplier += 0.1;
+                    }
+                }
+            } else if (obstacleToJump.type === 'groundspike') {
+                // Gai tam giác trên mặt đất - điều chỉnh dựa trên kích thước
+                jumpMultiplier = 1.1;
+                
+                // Gai thấp hơn, nên nhảy vừa đủ để không mất động lượng
+                if (gameplayContext.obstacleSequence) {
+                    jumpMultiplier = 1.2; // Tăng vừa phải để vẫn có thể nhảy tiếp
+                }
+            }
+            
+            // Điều chỉnh hợp lý theo điểm số (chó trở nên thông minh hơn khi điểm cao)
+            if (Math.floor(score / 10) > 500) {
+                jumpMultiplier *= 1.05; // Nhảy chính xác hơn 5% ở điểm cao
+            }
+
+            // Tính thời điểm nhảy tối ưu - bây giờ thông minh hơn
+            let distanceToJump = minDistance;
+            
+            // Tính khoảng cách nhảy tối ưu dựa trên nhiều yếu tố
+            let optimalJumpDistance = obstacleToJump.width + DOG_OBSTACLE_MARGIN;
+            
+            // Điều chỉnh khoảng cách nhảy dựa trên tốc độ
+            if (gameSpeed > 8) {
+                // Ở tốc độ cao, nhảy sớm hơn một chút
+                optimalJumpDistance += gameSpeed * 1.5;
+            }
+            
+            // Nếu có chuỗi chướng ngại vật, điều chỉnh khoảng cách nhảy tối ưu
+            if (gameplayContext.obstacleSequence) {
+                // Nhảy sớm hơn để có thể vượt qua cả chuỗi
+                optimalJumpDistance += 15;
+            }
+
+            // Nhảy khi đến khoảng cách phù hợp
+            if (distanceToJump <= optimalJumpDistance && distanceToJump > 0) {
+                dog.jumping = true;
+                dog.velocityY = DOG_JUMP_FORCE * jumpMultiplier;
+                dog.jumpStrength = jumpMultiplier;
+
+                // Đánh dấu đã nhảy chướng ngại vật nào
+                dog.nextObstacleType = obstacleToJump.type;
+
+                // Điều chỉnh thời gian hồi chiêu thông minh hơn
+                if (gameplayContext.obstacleSequence) {
+                    // Thời gian hồi ngắn hơn nếu có chuỗi chướng ngại vật gần nhau
+                    dog.jumpCooldown = 10;
+                } else {
+                    dog.jumpCooldown = 15;
+                }
+                
+                // Thêm hành vi thông minh - nếu khoảng cách đến người chơi là vừa phải và không trong chuỗi vật cản
+                // Có xác suất nhỏ để thực hiện nhảy tấn công
+                const attackJumpChance = (gameSpeed > 10) ? 0.35 : 0.2;
+                const idealAttackDistance = DOG_CHASE_DISTANCE * 0.7;
+                const isInAttackRange = Math.abs(gameplayContext.playerDistance - idealAttackDistance) < 50;
+                
+                if (!gameplayContext.obstacleSequence && isInAttackRange && Math.random() < attackJumpChance) {
+                    // Điều chỉnh thành tấn công dựa trên nhảy
+                    dog.attacking = true;
+                    dog.biteCooldown = 45; // Thời gian dài hơn trước khi có thể tấn công lại
+                }
+            }
+        }
+    }
+}
+
+// Update weather system
+function updateWeather() {
+    // Quản lý chuyển đổi trạng thái thời tiết ngẫu nhiên
+    weatherTimer++;
+
+    // Chỉ cho phép mưa khi người chơi đạt đủ 150 điểm (thay vì 50 điểm)
+    const currentScore = Math.floor(score / 10);
+
+    if (!isRaining && currentScore >= 150) {
+        // Nếu đang trong thời gian nghỉ giữa các đợt mưa
+        if (rainCooldownTimer > 0) {
+            rainCooldownTimer--;
+
+            // Hiển thị hiệu ứng bầu trời đang sáng dần sau mưa nếu thời gian nghỉ còn ít
+            if (rainCooldownTimer < 60 && rainCooldownTimer % 10 === 0) {
+                const brightnessLevel = 0.1 * (1 - rainCooldownTimer / 60);
+                ctx.fillStyle = `rgba(255, 255, 255, ${brightnessLevel})`;
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            }
+        } else {
+            // Cơ hội bắt đầu mưa: khoảng 0.2% mỗi frame, tăng theo thời gian
+            if (Math.random() < 0.002 + (weatherTimer / 10000)) {
+                startRain();
+            }
+        }
+    } else if (isRaining) {
+        // Cập nhật thời gian mưa
+        weatherDuration--;
+
+        // Kiểm tra kết thúc mưa
+        if (weatherDuration <= 0) {
+            stopRain();
+        }
+
+        // Hiệu ứng chớp ngẫu nhiên
+        if (Math.random() < 0.01 && !lightningFlash && !lightningStrike) {
+            lightningFlash = true;
+            lightningTimer = 5; // Thời gian hiển thị chớp            
+
+        }
+
+        // Cập nhật hiệu ứng chớp
+        if (lightningFlash) {
+            lightningTimer--;
+            if (lightningTimer <= 0) {
+                lightningFlash = false;
+            }
+        }
+
+        // Cập nhật hiệu ứng sét đánh
+        if (lightningStrike) {
+            lightningTimer--;
+            if (lightningTimer <= 0) {
+                lightningStrike = false;
+            }
+        }
+
+        // Cập nhật cảnh báo đám mây đen
+        if (darkCloudWarning) {
+            darkCloudTimer--;
+            if (darkCloudTimer <= 0) {
+                darkCloudWarning = false;
+            }
+        }
+    }
+}
+
+// Start rain effect
+function startRain() {
+    isRaining = true;
+    weatherDuration = 300 + Math.random() * 300; // Mưa kéo dài từ 5-10 giây (60fps)
+    jumpCount = 0; // Reset số lần nhảy khi bắt đầu mưa
+    jumpLightningChance = 0.05; // Reset tỉ lệ ban đầu bị sét đánh    
+}
+
+// Stop rain effect
+function stopRain() {
+    isRaining = false;
+    lightningFlash = false;
+    lightningStrike = false;
+    weatherTimer = 0;
+    jumpCount = 0;
+    rainCooldownTimer = RAIN_COOLDOWN; // Bắt đầu thời gian nghỉ giữa các đợt mưa
+    
+    // Đảm bảo đám mây đen biến mất khi hết mưa
+    darkCloudWarning = false;
+    darkCloudTimer = 0;    
+}
+
+// Check for lightning strike when player jumps during rain
+function checkLightningStrike() {
+    jumpCount++;
+
+    // Tăng cơ hội bị sét đánh theo số lần nhảy
+    const chance = jumpLightningChance * Math.pow(1.5, jumpCount - 1);
+
+    // Hiển thị cảnh báo đám mây đen trước khi sét đánh
+    darkCloudWarning = true;
+    darkCloudTimer = DARK_CLOUD_DURATION;
+
+    // Trì hoãn việc kiểm tra có bị sét đánh hay không để cho người chơi thời gian phản ứng
+    setTimeout(() => {
+        // Nếu đám mây đã biến mất (người chơi đã tránh được bằng cách ngồi xuống), bỏ qua
+        if (!darkCloudWarning) return;
+
+        // Kiểm tra xem người chơi có bị sét đánh không
+        if (Math.random() < chance) {
+            // Nếu người chơi đang ngồi, không bị sét đánh
+            if (player.ducking) {
+                // Tránh được sét đánh khi ngồi xuống
+                darkCloudTimer = 10; // Rút ngắn thời gian hiển thị đám mây đen
+                darkCloudWarning = false; // Xóa cảnh báo
+                return;
+            }
+
+            // Người chơi bị sét đánh - ngừng chạy ngay lập tức
+            gameOver = true; // Đánh dấu game kết thúc ngay lập tức
+
+            // Bật trạng thái điện giật và người chơi sẽ nằm xuống
+            playerElectrocuted = true;
+
+            // Vị trí sét đánh (trên đầu người chơi)
+            lightningStrike = true;
+            lightningTimer = 30; // Thời gian hiệu ứng sét kéo dài
+            lightningX = player.x + player.width / 2 - 40; // Canh giữa tia sét
+            lightningY = 0;
+
+            // Hiệu ứng rung màn hình khi bị sét đánh
+            canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 2 - 1}px)`;
+        } else {
+            // Không bị sét đánh, đám mây tan biến
+            darkCloudTimer = 10; // Rút ngắn thời gian hiển thị đám mây đen
+            darkCloudWarning = false; // Xóa cảnh báo
+        }
+    }, 1000); // Cho người chơi 1 giây để phản ứng với đám mây đen
+}
+
+// Bắt đầu hiệu ứng động đất
+function startEarthquake() {
+    isEarthquake = true;
+
+    // Đặt thời gian và cường độ ngẫu nhiên cho động đất
+    earthquakeDuration = EARTHQUAKE_BASE_DURATION + Math.random() * 120; // 3-5 giây
+    earthquakeIntensity = 0.5 + Math.random() * 2.5; // Cường độ từ 0.5 đến 3.0
+    earthquakeTimer = 0;
+
+    // Tạo hiệu ứng "cảnh báo" bằng việc làm rung màn hình nhẹ ngay lập tức
+    canvas.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 2 - 1}px)`;
+}
+
+// Kết thúc hiệu ứng động đất
+function stopEarthquake() {
+    isEarthquake = false;
+    earthquakeTimer = 0;
+    earthquakeCooldown = EARTHQUAKE_COOLDOWN; // 15 giây nghỉ giữa các đợt động đất (ở 60fps)
+    canvas.style.transform = 'translate(0, 0)';
+}
+
+// Update earthquake system
+function updateEarthquake() {
+    // Kiểm tra điều kiện để có thể xảy ra động đất (điểm > 100)
+    const currentScore = Math.floor(score / 10);
+
+    if (!isEarthquake && currentScore >= EARTHQUAKE_MIN_SCORE) {
+        // Nếu đang trong thời gian nghỉ giữa các đợt động đất
+        if (earthquakeCooldown > 0) {
+            earthquakeCooldown--;
+        } else {
+            // Ngẫu nhiên kích hoạt động đất
+            if (Math.random() < EARTHQUAKE_CHANCE) {
+                startEarthquake();
+            }
+        }
+    } else if (isEarthquake) {
+        // Cập nhật timer và hiệu ứng động đất
+        earthquakeTimer++;
+
+        // Cập nhật hiệu ứng rung màn hình
+        if (earthquakeTimer % 2 === 0) { // Mỗi 2 frame cập nhật một lần để giảm mức độ rung
+            const currentIntensity = earthquakeIntensity *
+                    (1 - Math.min(1, earthquakeTimer / earthquakeDuration * 1.5)); // Giảm dần cường độ
+
+            // Tạo dao động ngẫu nhiên dựa trên cường độ
+            const xOffset = (Math.random() * 2 - 1) * currentIntensity;
+            const yOffset = (Math.random() * 2 - 1) * currentIntensity * 0.7; // Rung ít hơn theo chiều dọc
+
+            // Áp dụng hiệu ứng rung
+            canvas.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+
+            // Tạo hiệu ứng nứt đất khi động đất mạnh
+            if (currentIntensity > 1.5 && earthquakeTimer % 15 === 0) {
+                const crackX = Math.random() * GAME_WIDTH;
+                const crackWidth = 20 + Math.random() * 30;
+
+                ctx.fillStyle = 'rgba(100, 80, 60, 0.6)';
+                ctx.beginPath();
+                ctx.moveTo(crackX, GROUND_Y);
+                ctx.lineTo(crackX + crackWidth * 0.3, GROUND_Y - 5);
+                ctx.lineTo(crackX + crackWidth * 0.7, GROUND_Y - 3);
+                ctx.lineTo(crackX + crackWidth, GROUND_Y);
+                ctx.fill();
+            }
+
+            // Nếu động đất mạnh, tạo hiệu ứng bụi bay lên từ mặt đất
+            if (currentIntensity > 1.0 && Math.random() > 0.7) {
+                const numDustParticles = Math.floor(currentIntensity * 3);
+
+                for (let i = 0; i < numDustParticles; i++) {
+                    const dustX = Math.random() * GAME_WIDTH;
+                    const dustSize = Math.random() * 3 + 1;
+
+                    ctx.fillStyle = 'rgba(180, 160, 140, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(dustX, GROUND_Y - 2, dustSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Ảnh hưởng đến người chơi khi động đất mạnh
+        if (earthquakeIntensity > 2.0 && !player.jumping && earthquakeTimer % 30 === 0) {
+            // Làm chậm nhân vật người chơi khi động đất mạnh
+            player.x -= 0.5 * earthquakeIntensity;
+
+            // Đảm bảo người chơi không bị đẩy ra khỏi màn hình
+            if (player.x < PLAYER_START_X) {
+                player.x = PLAYER_START_X;
+            }
+        }
+
+        // Kiểm tra kết thúc động đất
+        if (earthquakeTimer >= earthquakeDuration) {
+            stopEarthquake();
+        }
+    }
+}
+
+// Hiển thị thông báo về tốc độ trên màn hình
+function showSpeedMessage(message, color) {
+    const speedMsg = document.createElement('div');
+    speedMsg.textContent = message;
+    speedMsg.style.position = 'absolute';
+    speedMsg.style.left = '50%';
+    speedMsg.style.top = '30%';
+    speedMsg.style.transform = 'translate(-50%, -50%)';
+    speedMsg.style.fontSize = '24px';
+    speedMsg.style.fontWeight = 'bold';
+    speedMsg.style.color = color;
+    speedMsg.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.5)';
+    speedMsg.style.zIndex = 1000;
+    
+    document.body.appendChild(speedMsg);
+    
+    // Hiệu ứng xuất hiện và biến mất
+    let opacity = 0;
+    const fadeIn = setInterval(() => {
+        opacity += 0.1;
+        speedMsg.style.opacity = opacity;
+        if (opacity >= 1) {
+            clearInterval(fadeIn);
+            setTimeout(() => {
+                const fadeOut = setInterval(() => {
+                    opacity -= 0.1;
+                    speedMsg.style.opacity = opacity;
+                    if (opacity <= 0) {
+                        clearInterval(fadeOut);
+                        document.body.removeChild(speedMsg);
+                    }
+                }, 50);
+            }, 1000);
+        }
+    }, 50);
+}
+
+// Create an explosion effect at the given coordinates
+function createExplosion(x, y) {
+    // Điều chỉnh vị trí y để hiệu ứng nổ nổi lên trên mặt đất hơn
+    const adjustedY = y - 25; // Di chuyển hiệu ứng nổ lên cao hơn 25px
+    
+    for (const sprite of explosionSprites) {
+        ctx.drawImage(sprite, x - 40, adjustedY - 40, 80, 80); // Căn giữa hiệu ứng nổ tại vị trí x,y
+    }
+}
+
+// Update speed effect system
+function updateSpeedEffect() {
+    // Giảm thời gian chờ giữa các hiệu ứng tốc độ nếu đang trong thời gian chờ
+    if (speedEffectCooldown > 0) {
+        speedEffectCooldown--;
+    }
+    
+    // Kết thúc hiệu ứng tốc độ nếu đã hết thời gian
+    if (speedEffectActive && speedEffectTimer > 0) {
+        speedEffectTimer--;
+        
+        // Khi hiệu ứng kết thúc, đặt lại tốc độ về bình thường
+        if (speedEffectTimer <= 0) {
+            speedEffectActive = false;
+            speedEffectMultiplier = 1.0;
+        }
+        
+        // Tạo hiệu ứng hình ảnh cho người chơi khi đang có hiệu ứng tốc độ
+        if (speedEffectMultiplier > 1.0 && Math.random() > 0.7) {
+            // Hiệu ứng tăng tốc - vệt mờ phía sau
+            ctx.fillStyle = 'rgba(50, 150, 255, 0.3)';
+            ctx.fillRect(player.x - 10, player.y + 10, 15, player.height / 2);
+        } else if (speedEffectMultiplier < 1.0 && Math.random() > 0.7) {
+            // Hiệu ứng giảm tốc - bụi/đất khi di chuyển chậm
+            ctx.fillStyle = 'rgba(120, 100, 80, 0.4)';
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(player.x + player.width / 2 - i * 3, player.y + player.height - 5,
+                        1 + Math.random() * 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+    
+    // Kiểm tra điều kiện để kích hoạt hiệu ứng tốc độ ngẫu nhiên
+    const currentScore = Math.floor(score / 10);
+    
+    if (!speedEffectActive && currentScore >= SPEED_EFFECT_MIN_SCORE && speedEffectCooldown <= 0) {
+        // Tính toán xác suất xuất hiện hiệu ứng dựa trên điểm số
+        // Bắt đầu với xác suất cơ bản và tăng dần theo điểm số
+        const baseChance = SPEED_EFFECT_CHANCE; // Xác suất cơ bản (0.001 = 0.1%)
+        
+        // Tăng xác suất theo điểm số (tăng 0.05% cho mỗi 500 điểm sau 200 điểm)
+        const scoreBonus = Math.max(0, currentScore - SPEED_EFFECT_MIN_SCORE) / 500 * 0.0005;
+        
+        // Đặt giới hạn tối đa cho xác suất là 1% (0.01) để tránh xuất hiện quá nhiều
+        const maxChance = 0.01; 
+        
+        // Tính toán xác suất cuối cùng, giới hạn trong khoảng [baseChance, maxChance]
+        const finalChance = Math.min(maxChance, baseChance + scoreBonus);
+        
+        // Ngẫu nhiên kích hoạt hiệu ứng tốc độ với xác suất đã tính
+        if (Math.random() < finalChance) {
+            activateSpeedEffect();
+        }
+    }
+}
+
+// Kích hoạt hiệu ứng tốc độ ngẫu nhiên
+function activateSpeedEffect() {
+    speedEffectActive = true;
+    speedEffectTimer = SPEED_EFFECT_DURATION;
+    
+    // Chỉ tăng tốc độ, không còn giảm tốc
+    speedEffectMultiplier = 1.3 + Math.random() * 0.3; // 1.3x đến 1.6x tốc độ
+    
+    // Hiển thị thông báo tăng tốc trên màn hình
+    showSpeedMessage("Speed Boost!", "rgb(50, 200, 100)");
+    
+    // Đặt thời gian chờ cho hiệu ứng tiếp theo
+    speedEffectCooldown = SPEED_EFFECT_COOLDOWN;
+}
+
+// Create Gray Bird sprites
+function createGrayBirdSprites() {
+    // Create two sprites for gray bird animation
+    for (let i = 0; i < 2; i++) {
+        const grayBirdCanvas = document.createElement('canvas');
+        grayBirdCanvas.width = GRAY_BIRD_WIDTH;
+        grayBirdCanvas.height = GRAY_BIRD_HEIGHT;
+        const birdCtx = grayBirdCanvas.getContext('2d');
+        
+        // Draw gray bird body
+        birdCtx.fillStyle = '#808080'; // Gray color
+        birdCtx.beginPath();
+        birdCtx.ellipse(GRAY_BIRD_WIDTH / 2, GRAY_BIRD_HEIGHT / 2, 15, 10, 0, 0, Math.PI * 2);
+        birdCtx.fill();
+        
+        // Draw head
+        birdCtx.fillStyle = '#606060'; // Darker gray for head
+        birdCtx.beginPath();
+        birdCtx.arc(GRAY_BIRD_WIDTH / 2 + 12, GRAY_BIRD_HEIGHT / 2 - 2, 7, 0, Math.PI * 2);
+        birdCtx.fill();
+        
+        // Draw beak
+        birdCtx.fillStyle = '#333333'; // Dark gray for beak
+        birdCtx.beginPath();
+        birdCtx.moveTo(GRAY_BIRD_WIDTH / 2 + 19, GRAY_BIRD_HEIGHT / 2 - 2); // Start at tip of beak
+        birdCtx.lineTo(GRAY_BIRD_WIDTH / 2 + 25, GRAY_BIRD_HEIGHT / 2 - 4); // Top point
+        birdCtx.lineTo(GRAY_BIRD_WIDTH / 2 + 25, GRAY_BIRD_HEIGHT / 2); // Bottom point
+        birdCtx.closePath();
+        birdCtx.fill();
+        
+        // Draw eye
+        birdCtx.fillStyle = '#990000'; // Red eye for angry look
+        birdCtx.beginPath();
+        birdCtx.arc(GRAY_BIRD_WIDTH / 2 + 15, GRAY_BIRD_HEIGHT / 2 - 4, 2, 0, Math.PI * 2);
+        birdCtx.fill();
+        
+        // Add white glint to eye for more expression
+        birdCtx.fillStyle = 'white';
+        birdCtx.beginPath();
+        birdCtx.arc(GRAY_BIRD_WIDTH / 2 + 14.5, GRAY_BIRD_HEIGHT / 2 - 4.5, 0.8, 0, Math.PI * 2);
+        birdCtx.fill();
+        
+        // Draw wings - different position based on animation frame
+        birdCtx.fillStyle = '#707070'; // Slightly lighter gray for wings
+        birdCtx.beginPath();
+        
+        if (i === 0) {
+            // Wings up
+            birdCtx.ellipse(GRAY_BIRD_WIDTH / 2 - 2, GRAY_BIRD_HEIGHT / 2 - 7, 10, 5, Math.PI / 6, 0, Math.PI * 2);
+        } else {
+            // Wings down
+            birdCtx.ellipse(GRAY_BIRD_WIDTH / 2 - 2, GRAY_BIRD_HEIGHT / 2 + 3, 10, 5, -Math.PI / 6, 0, Math.PI * 2);
+        }
+        birdCtx.fill();
+        
+        // Draw tail
+        birdCtx.fillStyle = '#606060';
+        birdCtx.beginPath();
+        birdCtx.moveTo(GRAY_BIRD_WIDTH / 2 - 15, GRAY_BIRD_HEIGHT / 2);
+        birdCtx.lineTo(GRAY_BIRD_WIDTH / 2 - 25, GRAY_BIRD_HEIGHT / 2 - 5);
+        birdCtx.lineTo(GRAY_BIRD_WIDTH / 2 - 25, GRAY_BIRD_HEIGHT / 2 + 5);
+        birdCtx.closePath();
+        birdCtx.fill();
+        
+        // Save to image for the game to use
+        const imageData = grayBirdCanvas.toDataURL();
+        const img = new Image();
+        img.src = imageData;
+        img.onload = imageLoaded;
+        grayBirdSprites.push(img);
+    }
+    
+    // Add to loaded images count
+    imagesLoaded += 2;
+}

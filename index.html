@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Human Runner Offline</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHN0eWxlPmNpcmNsZSB7IGZpbGw6ICMzNzQ1NGU7IH0gLnJ1bm5lciB7IGZpbGw6ICNmZmYgfTwvc3R5bGU+PGNpcmNsZSBjeD0iOCIgY3k9IjgiIHI9IjgiLz48cGF0aCBjbGFzcz0icnVubmVyIiBkPSJNNSA0YzAtLjYuNC0xIDEtMXMxIC40IDEgMS0uNCAxLTEgMS0xLS40LTEtMXptLjIgMi4yTDcgNmwuMyAxLjNMNi4xIDlsLS42LTFMMy41IDdjLS4zLS4yLS40LS42LS4zLTEgLjItLjMuNi0uNSAxLS4zbDEgLjV6TTUuNSAxMmwuNy0yaDEuNmwuNyAyaDEuMkw4IDZ2LTFINnY0bC0xLjcgM2gxLjJ6Ii8+PC9zdmc+" type="image/svg+xml">
+</head>
+<body>
+    <!-- Thông báo xoay màn hình -->
+    <div id="orientation-message">
+        <h2>Please rotate your device</h2>
+        <p>This game can only be played in landscape mode</p>
+        <div class="device-animation">
+            <div class="phone-outline">
+                <div class="phone-screen"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <div class="score-container">
+            <div id="score">Score: 0</div>
+            <div id="high-score">High Score: 0</div>
+            <div id="game-speed">Speed: 1x</div>
+        </div>
+        
+        <!-- Đã loại bỏ hiển thị combo -->
+        
+        <!-- Đã loại bỏ hiển thị powerup -->
+        
+        <canvas id="game" width="800" height="300"></canvas>
+        
+        <!-- Điều khiển cảm ứng cho thiết bị di động -->
+        <div class="touch-controls">
+            <div class="touch-button touch-left">
+                <div class="touch-button-overlay duck-icon"></div>
+            </div>
+            <div class="touch-button touch-right">
+                <div class="touch-button-overlay jump-icon"></div>
+            </div>
+        </div>
+        
+        <div id="game-over" class="hidden">
+            <h2>Game Over</h2>
+            <p class="desktop-only">Press Space to restart</p>
+            <p class="mobile-only">Touch the screen to restart</p>            
+        </div>
+        
+        <div class="controls-guide">
+            <div class="control-item"><div class="key-box">↑</div><div class="key-box">Space</div><span>Jump</span></div>
+            <div class="control-item info-text">Double-tap jump for Star Jump!</div>
+            <div class="control-item"><div class="key-box">↓</div><span>Duck</span></div>
+            <div class="control-item"><div class="key-box">Space</div><span>Restart</span></div>
+        </div>
+    </div>
+    <!-- Script nhúng theo thứ tự phụ thuộc -->
+    <script src="constants.js"></script>
+    <script src="utils.js"></script>
+    <script src="score.js"></script>
+    <!-- Các file đối tượng mới được tạo -->
+    <script src="cactus.js"></script>
+    <script src="bird.js"></script>
+    <script src="native.js"></script>
+    <script src="mine.js"></script>
+    <script src="teepee.js"></script>
+    <!-- Các file quản lý game -->
+    <script src="player.js"></script>
+    <script src="dog.js"></script>
+    <script src="obstacles.js"></script>
+    <script src="weather.js"></script>
+    <script src="renderer.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

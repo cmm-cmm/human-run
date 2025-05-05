@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Hình Ảnh Bumerang</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 20px 0;
+            background-color: #fff;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        img {
+            margin: 10px;
+            border: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tạo Hình Ảnh Bumerang</h1>
+    
+    <div class="controls">
+        <button id="generate">Tạo Hình Ảnh</button>
+        <button id="download">Tải Xuống</button>
+        <button id="download_rotated">Tải Xuống Bản Xoay</button>
+    </div>
+    
+    <canvas id="canvas" width="40" height="40"></canvas>
+    
+    <div class="preview">
+        <h3>Xem Trước:</h3>
+        <img id="preview" width="40" height="40" alt="Bumerang">
+        <img id="preview_rotated" width="40" height="40" alt="Bumerang Xoay">
+    </div>
+    
+    <script>
+        // Lấy các elements
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const previewImg = document.getElementById('preview');
+        const previewRotatedImg = document.getElementById('preview_rotated');
+        const generateBtn = document.getElementById('generate');
+        const downloadBtn = document.getElementById('download');
+        const downloadRotatedBtn = document.getElementById('download_rotated');
+        
+        // Hàm vẽ bumerang
+        function drawBoomerang(ctx, rotate = false) {
+            // Xóa canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Thiết lập các màu sắc
+            const boomerangColor = '#8B4513'; // Màu nâu gỗ
+            const highlightColor = '#D2B48C'; // Màu be sáng cho highlight
+            
+            // Lưu trạng thái canvas
+            ctx.save();
+            
+            // Di chuyển tâm vẽ vào giữa canvas
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            
+            // Xoay nếu cần
+            if (rotate) {
+                ctx.rotate(Math.PI / 4); // Xoay 45 độ
+            }
+            
+            // Vẽ bumerang (hình chữ V)
+            ctx.beginPath();
+            ctx.moveTo(0, -10);
+            ctx.quadraticCurveTo(15, 0, 10, 10);
+            ctx.quadraticCurveTo(5, 7, 0, 0);
+            ctx.quadraticCurveTo(-5, 7, -10, 10);
+            ctx.quadraticCurveTo(-15, 0, 0, -10);
+            ctx.closePath();
+            
+            // Đổ màu cho bumerang
+            ctx.fillStyle = boomerangColor;
+            ctx.fill();
+            
+            // Vẽ các chi tiết và highlight
+            ctx.beginPath();
+            ctx.moveTo(0, -8);
+            ctx.quadraticCurveTo(12, 0, 8, 8);
+            ctx.quadraticCurveTo(4, 6, 0, 1);
+            ctx.closePath();
+            ctx.fillStyle = highlightColor;
+            ctx.globalAlpha = 0.5;
+            ctx.fill();
+            
+            // Vẽ chi tiết bên trái
+            ctx.beginPath();
+            ctx.moveTo(0, 1);
+            ctx.quadraticCurveTo(-4, 6, -8, 8);
+            ctx.quadraticCurveTo(-12, 0, 0, -8);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Viền đường bao quanh
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = '#553311';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -10);
+            ctx.quadraticCurveTo(15, 0, 10, 10);
+            ctx.quadraticCurveTo(5, 7, 0, 0);
+            ctx.quadraticCurveTo(-5, 7, -10, 10);
+            ctx.quadraticCurveTo(-15, 0, 0, -10);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Khôi phục trạng thái
+            ctx.restore();
+        }
+        
+        // Vẽ bumerang và cập nhật hình ảnh xem trước
+        function generateBoomerang() {
+            // Vẽ bumerang gốc
+            drawBoomerang(ctx);
+            previewImg.src = canvas.toDataURL('image/png');
+            
+            // Tạo một canvas mới cho bản xoay
+            const rotatedCanvas = document.createElement('canvas');
+            rotatedCanvas.width = 40;
+            rotatedCanvas.height = 40;
+            const rotatedCtx = rotatedCanvas.getContext('2d');
+            
+            // Vẽ bumerang xoay
+            drawBoomerang(rotatedCtx, true);
+            previewRotatedImg.src = rotatedCanvas.toDataURL('image/png');
+        }
+        
+        // Tải xuống hình ảnh
+        function downloadImage(rotate = false) {
+            // Tạo canvas tạm thời
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 40;
+            tempCanvas.height = 40;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Vẽ bumerang
+            drawBoomerang(tempCtx, rotate);
+            
+            // Tạo link tải xuống
+            const link = document.createElement('a');
+            link.download = rotate ? 'boomerang_1.png' : 'boomerang.png';
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Thêm các sự kiện
+        generateBtn.addEventListener('click', generateBoomerang);
+        downloadBtn.addEventListener('click', () => downloadImage(false));
+        downloadRotatedBtn.addEventListener('click', () => downloadImage(true));
+        
+        // Tự động tạo hình ảnh khi tải trang
+        generateBoomerang();
+    </script>
+</body>
+</html>

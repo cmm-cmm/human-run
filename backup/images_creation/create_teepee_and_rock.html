@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo hình ảnh liều và đá</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+            margin: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        button {
+            margin: 10px;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tạo hình ảnh liều và đá</h1>
+        <div>
+            <canvas id="teepeeCanvas" width="300" height="200"></canvas>
+            <canvas id="rockCanvas" width="100" height="100"></canvas>
+        </div>
+        <div>
+            <button id="downloadTeepee">Tải liều</button>
+            <button id="downloadRock">Tải đá</button>
+        </div>
+    </div>
+
+    <script>
+        // Hàm tạo liều
+        function drawTeepee() {
+            const canvas = document.getElementById('teepeeCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Kích thước liều
+            const teepeeWidth = 80;
+            const teepeeHeight = 100;
+            const x = canvas.width / 2 - teepeeWidth / 2;
+            const y = canvas.height - teepeeHeight - 10;
+            
+            // Vẽ đế liều
+            ctx.fillStyle = "#8B4513"; // Màu nâu cho đế
+            ctx.beginPath();
+            ctx.ellipse(x + teepeeWidth / 2, y + teepeeHeight - 5, teepeeWidth / 2, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Vẽ thân liều
+            ctx.fillStyle = "#DAA520"; // Màu vàng nâu cho da động vật
+            ctx.beginPath();
+            ctx.moveTo(x + teepeeWidth / 2, y); // Đỉnh
+            ctx.lineTo(x, y + teepeeHeight); // Góc trái
+            ctx.lineTo(x + teepeeWidth, y + teepeeHeight); // Góc phải
+            ctx.closePath();
+            ctx.fill();
+            
+            // Vẽ đường trang trí trên liều
+            ctx.strokeStyle = "#8B4513";
+            ctx.lineWidth = 2;
+            
+            // Đường trang trí ngang
+            for (let i = 1; i <= 3; i++) {
+                const lineY = y + (teepeeHeight * i / 4);
+                const lineWidth = (teepeeWidth * (4 - i)) / 4;
+                
+                ctx.beginPath();
+                ctx.moveTo(x + (teepeeWidth - lineWidth) / 2, lineY);
+                ctx.lineTo(x + (teepeeWidth - lineWidth) / 2 + lineWidth, lineY);
+                ctx.stroke();
+            }
+            
+            // Đường trang trí độc đáo
+            ctx.strokeStyle = "#CD5C5C"; // Màu đỏ cho trang trí
+            ctx.beginPath();
+            
+            // Vẽ các hoa văn tam giác
+            for (let i = 0; i < 3; i++) {
+                const patternX = x + 20 + i * 20;
+                const patternY = y + 60;
+                
+                ctx.beginPath();
+                ctx.moveTo(patternX, patternY - 10);
+                ctx.lineTo(patternX - 5, patternY);
+                ctx.lineTo(patternX + 5, patternY);
+                ctx.closePath();
+                ctx.stroke();
+            }
+            
+            // Vẽ cửa ra vào
+            ctx.fillStyle = "#382C1E"; // Màu tối cho cửa
+            ctx.beginPath();
+            ctx.ellipse(x + teepeeWidth / 2, y + teepeeHeight - 30, 10, 20, 0, 0, Math.PI);
+            ctx.fill();
+            
+            // Vẽ các cây cột chống
+            ctx.strokeStyle = "#5E2612";
+            ctx.lineWidth = 3;
+            
+            // Cột giữa
+            ctx.beginPath();
+            ctx.moveTo(x + teepeeWidth / 2, y - 10);
+            ctx.lineTo(x + teepeeWidth / 2, y + teepeeHeight);
+            ctx.stroke();
+            
+            // Cột trái
+            ctx.beginPath();
+            ctx.moveTo(x + 15, y + 20);
+            ctx.lineTo(x, y + teepeeHeight);
+            ctx.stroke();
+            
+            // Cột phải
+            ctx.beginPath();
+            ctx.moveTo(x + teepeeWidth - 15, y + 20);
+            ctx.lineTo(x + teepeeWidth, y + teepeeHeight);
+            ctx.stroke();
+            
+            // Thêm khói
+            ctx.fillStyle = "rgba(200, 200, 200, 0.7)";
+            const smokeX = x + teepeeWidth / 2;
+            const smokeY = y - 5;
+            
+            ctx.beginPath();
+            ctx.arc(smokeX, smokeY - 5, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(smokeX - 3, smokeY - 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(smokeX + 3, smokeY - 12, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Hàm tạo đá
+        function drawRock() {
+            const canvas = document.getElementById('rockCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Kích thước đá
+            const rockWidth = 30;
+            const rockHeight = 20;
+            const x = canvas.width / 2 - rockWidth / 2;
+            const y = canvas.height / 2 - rockHeight / 2;
+            
+            // Vẽ đá
+            ctx.fillStyle = "#808080";
+            ctx.beginPath();
+            
+            // Tạo hình dạng đa giác cho đá
+            ctx.moveTo(x, y + rockHeight / 2); // Điểm trái giữa
+            ctx.lineTo(x + rockWidth / 4, y); // Điểm trên trái
+            ctx.lineTo(x + rockWidth * 3/4, y); // Điểm trên phải
+            ctx.lineTo(x + rockWidth, y + rockHeight / 2); // Điểm phải giữa
+            ctx.lineTo(x + rockWidth * 3/4, y + rockHeight); // Điểm dưới phải
+            ctx.lineTo(x + rockWidth / 4, y + rockHeight); // Điểm dưới trái
+            ctx.closePath();
+            ctx.fill();
+            
+            // Thêm hiệu ứng nổi cho đá
+            ctx.fillStyle = "#606060";
+            
+            // Tạo đường nét cho đá
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                const lineX = x + 10 + i * 7;
+                const lineY = y + 5 + i * 3;
+                
+                ctx.moveTo(lineX, lineY);
+                ctx.lineTo(lineX + 5, lineY + 2);
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+            
+            // Thêm hiệu ứng sáng tối
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.beginPath();
+            ctx.moveTo(x + rockWidth / 4, y);
+            ctx.lineTo(x + rockWidth * 3/4, y);
+            ctx.lineTo(x + rockWidth / 2, y + rockHeight / 3);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // Tải hình ảnh
+        function downloadImage(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Khởi tạo
+        window.onload = function() {
+            drawTeepee();
+            drawRock();
+            
+            document.getElementById('downloadTeepee').addEventListener('click', function() {
+                downloadImage(document.getElementById('teepeeCanvas'), 'teepee.png');
+            });
+            
+            document.getElementById('downloadRock').addEventListener('click', function() {
+                downloadImage(document.getElementById('rockCanvas'), 'rock.png');
+            });
+        };
+    </script>
+</body>
+</html>
